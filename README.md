@@ -12,6 +12,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [좌표 클릭 / 랜덤 위치 클릭](#좌표-클릭--랜덤-위치-클릭)
 - [모바일 관련 기능](#모바일-관련-기능)
 - [현재 구현 범위](#현재-구현-범위)
+- [License](#license)
 - [개발](#개발)
 
 ## 핵심 강점
@@ -175,6 +176,12 @@ Implemented:
 - expected conditions: `presence_of_element_located`, `visibility_of_element_located`, `element_to_be_clickable`, `invisibility_of_element_located`, `alert_is_present`, `title_is`, `title_contains`, `url_contains`, `url_to_be`, `url_matches`, text checks, and window count checks
 
 더 자세한 사용법은 [GUIDE.md](GUIDE.md)에 정리되어 있습니다.
+
+## License
+
+This project is licensed under the GNU Affero General Public License v3.0.
+
+`selenodriver` depends on `nodriver`, which is licensed under AGPL-3.0, so this project follows the same license family.
 
 ## 개발
 

@@ -7,6 +7,7 @@ name = "selenodriver"
 version = "0.1.0"
 description = "Selenium-style synchronous WebDriver API powered by Python nodriver."
 readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",
@@ -17,7 +18,7 @@ authors = [
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
+  "License :: OSI Approved :: GNU Affero General Public License v3",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
 ]
