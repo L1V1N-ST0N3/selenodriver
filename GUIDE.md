@@ -2,6 +2,35 @@
 
 `selenodriver`는 Python `nodriver` 위에 Selenium 스타일의 동기 API를 제공하는 호환 레이어입니다. 목표는 기존 Selenium 코드의 구조를 최대한 유지하면서 `nodriver` 기반으로 브라우저를 제어하는 것입니다.
 
+## 목차
+
+- [기본 사용](#기본-사용)
+- [빠른 기능 요약](#빠른-기능-요약)
+- [마우스/클릭 강점](#마우스클릭-강점)
+- [모바일/터치 강점](#모바일터치-강점)
+- [Options](#options)
+- [Driver](#driver)
+- [Locator](#locator)
+- [WebElement](#webelement)
+- [Click](#click)
+- [ActionChains](#actionchains)
+- [Keys](#keys)
+- [WebDriverWait](#webdriverwait)
+- [Window Handles](#window-handles)
+- [Cookies](#cookies)
+- [Screenshots](#screenshots)
+- [Window Size And Position](#window-size-and-position)
+- [Scroll Helpers](#scroll-helpers)
+- [Direct CDP](#direct-cdp)
+- [Extension Modules](#extension-modules)
+- [Mobile Emulation Extension](#mobile-emulation-extension)
+- [Frames](#frames)
+- [Select](#select)
+- [Implicit Wait](#implicit-wait)
+- [Exceptions](#exceptions)
+- [현재 제한 사항](#현재-제한-사항)
+- [개발](#개발)
+
 ## 기본 사용
 
 ```python
@@ -27,6 +56,68 @@ from selenodriver.webdriver.common.action_chains import ActionChains
 from selenodriver.webdriver.chrome.options import Options
 from selenodriver.webdriver.support.ui import WebDriverWait, Select
 from selenodriver.webdriver.support import expected_conditions as EC
+```
+
+## 빠른 기능 요약
+
+| 영역 | 지원 기능 | 대표 코드 |
+| --- | --- | --- |
+| 탐색 | `get`, `back`, `forward`, `refresh` | `driver.get(url)` |
+| 요소 찾기 | CSS, XPath, id, name, tag, class | `driver.find_element(By.CSS_SELECTOR, ".login")` |
+| 마우스 클릭 | 중앙 클릭, offset 클릭, 랜덤 위치 클릭 | `element.click()` |
+| 터치 입력 | 터치 클릭, 더블 탭, 롱 프레스, 터치 드래그 | `element.touch_click()` |
+| JS 실행 | Selenium식 `arguments[0]` 지원 | `driver.execute_script("return arguments[0].textContent", element)` |
+| Wait | `WebDriverWait`, `EC.*`, optional auto wait | `wait.until(EC.element_to_be_clickable(locator))` |
+| 모바일 | Android/iOS 프로필, viewport, UA, touch emulation | `MobileEmulationExtension("android")` |
+| CDP | raw CDP 명령 직접 전달 | `driver.send_cdp(command)` |
+| 확장 | attach/navigation/new tab/context hook | `driver.use(extension)` |
+
+## 마우스/클릭 강점
+
+`selenodriver`의 기본 클릭은 Selenium 코드 스타일을 유지하지만 내부는 CDP 좌표 이벤트에 가깝게 동작합니다.
+
+- `element.click()`은 JS `el.click()`이 아니라 element 중앙 좌표에 마우스 이벤트를 보냅니다.
+- `element.mouse_click()` 또는 `element.click(input_type="mouse")`로 마우스 입력임을 명시할 수 있습니다.
+- `ActionChains.move_to_element_with_offset()`으로 element 중앙이 아닌 특정 offset 지점을 클릭할 수 있습니다.
+- element의 `size`, `location`, `rect`를 이용해 좌표 기반 로직을 만들 수 있습니다.
+- 랜덤 위치 클릭은 element 내부 좌상단 기준 좌표를 만든 뒤 Selenium 호환 offset으로 변환해서 처리합니다.
+- JS 클릭은 `element.js_click()`으로 분리되어 있어서 실제 입력 이벤트와 DOM 메서드 호출을 구분할 수 있습니다.
+
+예시:
+
+```python
+element.click()                  # 중앙 좌표 마우스 클릭
+element.mouse_click()            # 명시적 마우스 클릭
+element.js_click()               # JS el.click()
+
+ActionChains(driver) \
+    .move_to_element_with_offset(element, 10, -5) \
+    .click() \
+    .perform()
+```
+
+## 모바일/터치 강점
+
+모바일 테스트에서는 화면 크기만 바꾸는 것보다 입력 이벤트까지 터치 기반으로 맞추는 것이 중요합니다.
+
+- `element.touch_click()`은 CDP `Input.dispatchTouchEvent`로 `touchStart` / `touchEnd`를 보냅니다.
+- `element.click(input_type="touch")` 또는 `element.click(use_touch=True)`도 지원합니다.
+- `ActionChains.touch_click()`, `double_tap()`, `long_press()`, `touch_drag_and_drop()`을 제공합니다.
+- `driver.touch_scroll_by()` / `touch_scroll_to()`는 JS scroll이 아니라 터치 swipe 이벤트를 보냅니다.
+- `MobileEmulationExtension`은 UA, viewport, DPR, touch emulation, locale, timezone을 CDP로 적용합니다.
+- extension hook을 통해 브라우저 attach, 페이지 이동, context 변경, 새 탭 감지 시점에 모바일 설정을 자동 재적용합니다.
+
+예시:
+
+```python
+element.touch_click()
+
+ActionChains(driver) \
+    .touch_move_to_element_with_offset(element, 12, 8) \
+    .touch_click() \
+    .perform()
+
+driver.touch_scroll_by(0, 300)
 ```
 
 ## Options
@@ -294,6 +385,16 @@ button.click()
 
 `selenodriver`는 클릭 방식을 명확히 분리합니다.
 
+| 메서드 | 입력 방식 | 좌표 기준 | JS 실행 여부 |
+| --- | --- | --- | --- |
+| `element.click()` | mouse | element 중앙 | 아니오 |
+| `element.mouse_click()` | mouse | element 중앙 | 아니오 |
+| `element.click(input_type="touch")` | touch | element 중앙 | 아니오 |
+| `element.touch_click()` | touch | element 중앙 | 아니오 |
+| `element.js_click()` | JS | 좌표 없음 | 예 |
+| `ActionChains(...).move_to_element_with_offset(...).click()` | mouse | element 중앙 + offset | 아니오 |
+| `ActionChains(...).touch_move_to_element_with_offset(...).touch_click()` | touch | element 중앙 + offset | 아니오 |
+
 ### 기본 클릭
 
 ```python
@@ -346,13 +447,18 @@ ActionChains(driver).move_to_element(element).click().perform()
 click()
 touch_click()
 double_click()
+double_tap()
 context_click()
 move_to_element()
 move_to_element_with_offset()
+touch_move_to_element_with_offset()
 move_by_offset()
 drag_and_drop()
 drag_and_drop_by_offset()
+touch_drag_and_drop()
+touch_drag_by_offset()
 click_and_hold()
+long_press()
 release()
 send_keys()
 send_keys_to_element()
@@ -365,6 +471,8 @@ perform()
 
 ### Offset 클릭
 
+Offset 클릭은 element 중앙이 아닌 지점을 누르고 싶을 때 사용합니다. 예를 들어 버튼 중앙이 아니라 오른쪽 안쪽 영역, 체크박스 라벨의 특정 위치, 또는 테스트마다 조금 다른 위치를 누르는 흐름을 만들 수 있습니다.
+
 ```python
 ActionChains(driver) \
     .move_to_element_with_offset(element, xoffset, yoffset) \
@@ -373,6 +481,8 @@ ActionChains(driver) \
 ```
 
 Selenium 호환 기준으로 `xoffset`, `yoffset`은 element의 중앙점 기준입니다.
+
+예를 들어 `xoffset=10`, `yoffset=-5`는 element 중앙에서 오른쪽으로 10px, 위로 5px 이동한 지점을 뜻합니다.
 
 요소 내부의 좌상단 기준 랜덤 좌표를 클릭하고 싶다면:
 
