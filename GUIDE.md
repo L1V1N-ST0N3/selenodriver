@@ -5,6 +5,7 @@
 ## 목차
 
 - [기본 사용](#기본-사용)
+- [버전과 의존성](#버전과-의존성)
 - [빠른 기능 요약](#빠른-기능-요약)
 - [마우스/클릭 강점](#마우스클릭-강점)
 - [모바일/터치 강점](#모바일터치-강점)
@@ -56,6 +57,28 @@ from selenodriver.webdriver.common.action_chains import ActionChains
 from selenodriver.webdriver.chrome.options import Options
 from selenodriver.webdriver.support.ui import WebDriverWait, Select
 from selenodriver.webdriver.support import expected_conditions as EC
+```
+
+## 버전과 의존성
+
+현재 공개 기준 버전은 `0.1.0`입니다.
+
+패키지 요구사항:
+
+```text
+Python >= 3.10
+nodriver >= 0.39
+```
+
+`nodriver`는 `pyproject.toml`의 runtime dependency로 들어가 있습니다. 나중에 PyPI나 GitHub 기반으로 패키지를 설치하면 installer가 `nodriver>=0.39`도 같이 설치합니다.
+
+```toml
+[project]
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+  "nodriver>=0.39",
+]
 ```
 
 ## 빠른 기능 요약

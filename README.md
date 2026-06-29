@@ -7,6 +7,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 ## 목차
 
 - [핵심 강점](#핵심-강점)
+- [버전과 의존성](#버전과-의존성)
 - [빠른 시작](#빠른-시작)
 - [클릭과 입력 방식](#클릭과-입력-방식)
 - [좌표 클릭 / 랜덤 위치 클릭](#좌표-클릭--랜덤-위치-클릭)
@@ -24,6 +25,29 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - 모바일 흐름 지원: 터치 클릭, 터치 스크롤, 더블 탭, 롱 프레스, 터치 드래그, 모바일 에뮬레이션 확장을 제공합니다.
 - Selenium 호환 import: `selenodriver.webdriver.*` 경로를 지원해 기존 Selenium 코드와 비슷한 구조로 옮기기 쉽습니다.
 - 확장 모듈 구조: 외부/private extension을 붙여 브라우저 시작, 이동, 새 탭, context 변경 시점에 자동 로직을 적용할 수 있습니다.
+
+## 버전과 의존성
+
+Current package version:
+
+```text
+selenodriver 0.1.0
+```
+
+Runtime requirements:
+
+```text
+Python >= 3.10
+nodriver >= 0.39
+```
+
+`nodriver` is declared as a package dependency in `pyproject.toml`, so package installers will install it automatically when installing `selenodriver`.
+
+```toml
+dependencies = [
+  "nodriver>=0.39",
+]
+```
 
 ## 빠른 시작
 
