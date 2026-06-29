@@ -151,6 +151,8 @@ class MobileEmulationExtension:
         self.profile = self._resolve_profile(profile, seed)
         self.apply_on_attach = apply_on_attach
         self.init_script_ids: list[Any] = []
+        self._locale_applied_handles: set[str] = set()
+        self._timezone_applied_handles: set[str] = set()
 
     def on_attach(self, driver: Any) -> None:
         if self.apply_on_attach:
@@ -203,10 +205,13 @@ class MobileEmulationExtension:
                 max_touch_points=self.profile.max_touch_points,
             )
         )
-        if self.profile.locale:
+        handle = self._current_handle(driver)
+        if self.profile.locale and handle not in self._locale_applied_handles:
             driver.send_cdp(cdp.emulation.set_locale_override(self.profile.locale))
-        if self.profile.timezone_id:
+            self._locale_applied_handles.add(handle)
+        if self.profile.timezone_id and handle not in self._timezone_applied_handles:
             driver.send_cdp(cdp.emulation.set_timezone_override(self.profile.timezone_id))
+            self._timezone_applied_handles.add(handle)
         for script in self.profile.extra_scripts:
             script_id = driver.add_init_script(script, run_immediately=True)
             self.init_script_ids.append(script_id)
@@ -253,3 +258,9 @@ class MobileEmulationExtension:
         if self.profile.languages:
             return ",".join(self.profile.languages)
         return self.profile.locale
+
+    def _current_handle(self, driver: Any) -> str:
+        try:
+            return str(driver.current_window_handle)
+        except Exception:
+            return "__default__"

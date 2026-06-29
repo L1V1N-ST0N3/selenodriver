@@ -396,6 +396,8 @@ def test_mobile_emulation_extension_applies_cdp_commands():
     assert "Emulation.setTouchEmulationEnabled" in tab.cdp_methods
     assert "Emulation.setLocaleOverride" in tab.cdp_methods
     assert "Emulation.setTimezoneOverride" in tab.cdp_methods
+    assert tab.cdp_methods.count("Emulation.setLocaleOverride") == 1
+    assert tab.cdp_methods.count("Emulation.setTimezoneOverride") == 1
 
 
 def test_mobile_emulation_profile_shortcuts_are_deterministic_with_seed():
