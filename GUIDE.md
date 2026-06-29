@@ -381,6 +381,29 @@ element = driver.find_element(By.CSS_SELECTOR, "button")
 location = driver.find_element_location(element)
 ```
 
+브라우저 창 위치와 추가 보정값까지 더한 좌표가 필요하면 절대 좌표 helper를 사용합니다.
+
+```python
+absolute_location = driver.find_element_absolute_location(element)
+```
+
+또는 `find_element_location()`에서 옵션으로 받을 수도 있습니다.
+
+```python
+absolute_location = driver.find_element_location(
+    element,
+    absolute=True,
+)
+```
+
+이 방식은 내부적으로 `driver.get_window_rect()`의 `x`, `y`와 `element.location`을 더합니다.
+추가 보정값이 필요하면 반환된 좌표에 직접 더하면 됩니다.
+
+```python
+absolute_location["x"] += 10
+absolute_location["y"] += 20
+```
+
 `size`, `location`, `rect`는 내부적으로 `getBoundingClientRect()`를 사용합니다.
 
 ### 스크린샷

@@ -292,12 +292,26 @@ class Chrome:
         self,
         by: str | WebElement = By.CSS_SELECTOR,
         value: str | None = None,
+        *,
+        absolute: bool = False,
     ) -> dict[str, float]:
         if isinstance(by, WebElement):
             if value is not None:
                 raise ValueError("value must be None when passing a WebElement")
-            return by.location
-        return self.find_element(by, value).location
+            element = by
+        else:
+            element = self.find_element(by, value)
+        if absolute:
+            return self.find_element_absolute_location(element)
+        return element.location
+
+    def find_element_absolute_location(self, element: WebElement) -> dict[str, float]:
+        window_rect = self.get_window_rect()
+        element_location = element.location
+        return {
+            "x": window_rect["x"] + element_location["x"],
+            "y": window_rect["y"] + element_location["y"],
+        }
 
     def find_elements_by_css_selector(self, css_selector: str) -> list[WebElement]:
         return self.find_elements(By.CSS_SELECTOR, css_selector)
