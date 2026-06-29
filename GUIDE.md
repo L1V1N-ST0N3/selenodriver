@@ -367,6 +367,13 @@ print(element.location)  # {"x": ..., "y": ...}
 print(element.rect)      # {"x": ..., "y": ..., "width": ..., "height": ...}
 ```
 
+요소를 찾는 동시에 위치만 바로 받고 싶다면 편의 메서드도 사용할 수 있습니다.
+
+```python
+location = driver.find_element_location(By.CSS_SELECTOR, "button")
+print(location)  # {"x": ..., "y": ...}
+```
+
 `size`, `location`, `rect`는 내부적으로 `getBoundingClientRect()`를 사용합니다.
 
 ### 스크린샷

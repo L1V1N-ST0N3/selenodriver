@@ -288,6 +288,9 @@ class Chrome:
     def find_element_by_class_name(self, name: str) -> WebElement:
         return self.find_element(By.CLASS_NAME, name)
 
+    def find_element_location(self, by: str = By.CSS_SELECTOR, value: str | None = None) -> dict[str, float]:
+        return self.find_element(by, value).location
+
     def find_elements_by_css_selector(self, css_selector: str) -> list[WebElement]:
         return self.find_elements(By.CSS_SELECTOR, css_selector)
 
