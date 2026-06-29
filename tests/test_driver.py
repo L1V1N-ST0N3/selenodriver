@@ -923,6 +923,7 @@ def test_element_size_location_and_rect(driver):
     assert element.location == {"x": 7, "y": 9}
     assert element.rect == {"height": 25.5, "width": 120, "x": 7, "y": 9}
     assert driver.find_element_location(By.CSS_SELECTOR, "button") == {"x": 7, "y": 9}
+    assert driver.find_element_location(element) == {"x": 7, "y": 9}
 
 
 def test_wait_expected_condition(driver):

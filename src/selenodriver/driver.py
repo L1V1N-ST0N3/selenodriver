@@ -288,7 +288,15 @@ class Chrome:
     def find_element_by_class_name(self, name: str) -> WebElement:
         return self.find_element(By.CLASS_NAME, name)
 
-    def find_element_location(self, by: str = By.CSS_SELECTOR, value: str | None = None) -> dict[str, float]:
+    def find_element_location(
+        self,
+        by: str | WebElement = By.CSS_SELECTOR,
+        value: str | None = None,
+    ) -> dict[str, float]:
+        if isinstance(by, WebElement):
+            if value is not None:
+                raise ValueError("value must be None when passing a WebElement")
+            return by.location
         return self.find_element(by, value).location
 
     def find_elements_by_css_selector(self, css_selector: str) -> list[WebElement]:

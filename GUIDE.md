@@ -374,6 +374,13 @@ location = driver.find_element_location(By.CSS_SELECTOR, "button")
 print(location)  # {"x": ..., "y": ...}
 ```
 
+이미 찾은 element 객체도 넘길 수 있습니다.
+
+```python
+element = driver.find_element(By.CSS_SELECTOR, "button")
+location = driver.find_element_location(element)
+```
+
 `size`, `location`, `rect`는 내부적으로 `getBoundingClientRect()`를 사용합니다.
 
 ### 스크린샷
