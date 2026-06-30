@@ -1060,8 +1060,17 @@ TimeoutException
 
 ## 개발
 
+Install from PyPI:
+
 ```powershell
-python -m pip install -e ".[test]"
+python -m pip install selenodriver
+```
+
+For local development and tests:
+
+```powershell
+python -m pip install -e .
+python -m pip install pytest
 pytest
 ```
 
@@ -1075,5 +1084,5 @@ pytest -m smoke
 현재 기본 테스트:
 
 ```text
-53 passed, 1 skipped
+77 passed, 1 skipped
 ```

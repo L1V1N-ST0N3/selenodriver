@@ -209,8 +209,17 @@ This project is licensed under the GNU Affero General Public License v3.0.
 
 ## 개발
 
+Install from PyPI:
+
 ```powershell
-python -m pip install -e ".[test]"
+python -m pip install selenodriver
+```
+
+For local development and tests:
+
+```powershell
+python -m pip install -e .
+python -m pip install pytest
 pytest
 ```
 
