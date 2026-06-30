@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import uuid
 from typing import Any, Iterable
 
 from .by import By, locator_to_css
@@ -363,9 +364,68 @@ class WebElement:
         if value is None:
             raise ValueError("value is required")
         if by == By.XPATH:
-            raise NotImplementedError("Nested XPath lookup is not implemented by nodriver elements")
+            return self._find_elements_by_xpath(value)
         selector = locator_to_css(by, value)
         raw_elements = self._runner.run(self._raw.query_selector_all(selector)) or []
+        return [WebElement(raw, self._runner, self._driver) for raw in raw_elements]
+
+    def _find_elements_by_xpath(self, xpath: str) -> list["WebElement"]:
+        apply = getattr(self._raw, "apply", None)
+        query_selector_all = getattr(self._raw, "query_selector_all", None)
+        if apply is None or query_selector_all is None:
+            raise NotImplementedError("Nested XPath lookup requires element apply() and query_selector_all() support")
+
+        marker_name = "data-selenodriver-xpath"
+        marker_value = uuid.uuid4().hex
+        selector = f'[{marker_name}="{marker_value}"]'
+        script = f"""
+        (el) => {{
+          const result = document.evaluate(
+            {xpath!r},
+            el,
+            null,
+            XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+            null
+          );
+          const marked = [];
+          for (let i = 0; i < result.snapshotLength; i += 1) {{
+            let node = result.snapshotItem(i);
+            if (node && node.nodeType !== Node.ELEMENT_NODE) {{
+              node = node.parentElement;
+            }}
+            if (node && node.setAttribute) {{
+              node.setAttribute({marker_name!r}, {marker_value!r});
+              marked.push(node);
+            }}
+          }}
+          return marked.length;
+        }}
+        """
+        cleanup_script = f"""
+        (el) => {{
+          if (el.getAttribute({marker_name!r}) === {marker_value!r}) {{
+            el.removeAttribute({marker_name!r});
+          }}
+          el.querySelectorAll({selector!r}).forEach((node) => {{
+            node.removeAttribute({marker_name!r});
+          }});
+        }}
+        """
+        self._runner.run(apply(script, return_by_value=True))
+        try:
+            includes_self = bool(
+                self._runner.run(
+                    apply(
+                        f"(el) => el.getAttribute({marker_name!r}) === {marker_value!r}",
+                        return_by_value=True,
+                    )
+                )
+            )
+            raw_elements = self._runner.run(query_selector_all(selector)) or []
+        finally:
+            self._runner.run(apply(cleanup_script, return_by_value=True))
+        if includes_self:
+            raw_elements = [self._raw, *raw_elements]
         return [WebElement(raw, self._runner, self._driver) for raw in raw_elements]
 
     @property

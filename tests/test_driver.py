@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import re
 
 import pytest
 
@@ -59,6 +60,9 @@ class FakeElement:
         self.focused = False
         self.applied_scripts = []
         self.backend_node_id = id(self)
+        self.xpath_queries = {}
+        self._xpath_marked = {}
+        self._xpath_self_marked = set()
 
     def click(self):
         self.clicked = True
@@ -82,10 +86,38 @@ class FakeElement:
         self.cleared = True
 
     def query_selector_all(self, selector):
+        prefix = '[data-selenodriver-xpath="'
+        if selector.startswith(prefix) and selector.endswith('"]'):
+            token = selector[len(prefix) : -2]
+            return self._xpath_marked.get(token, [])
         return []
 
     def apply(self, script, **_kwargs):
         self.applied_scripts.append(script)
+        if "document.evaluate" in script:
+            for xpath, elements in self.xpath_queries.items():
+                if repr(xpath) in script:
+                    match = re.search(r"node\.setAttribute\('data-selenodriver-xpath', '([^']+)'\)", script)
+                    token = match.group(1) if match else None
+                    if token is not None:
+                        self._xpath_marked[token] = [element for element in elements if element is not self]
+                        if self in elements:
+                            self._xpath_self_marked.add(token)
+                    return len(elements)
+            return 0
+        if "removeAttribute('data-selenodriver-xpath')" in script:
+            for token in list(self._xpath_marked):
+                if token in script:
+                    self._xpath_marked.pop(token, None)
+            for token in list(self._xpath_self_marked):
+                if token in script:
+                    self._xpath_self_marked.remove(token)
+            return True
+        if "el.getAttribute('data-selenodriver-xpath')" in script:
+            for token in self._xpath_self_marked:
+                if token in script:
+                    return True
+            return False
         if "getBoundingClientRect" in script and "height:" in script:
             return self.rect
         if "toDataURL" in script:
@@ -848,6 +880,30 @@ def test_find_element_by_xpath(driver):
     driver.raw_tab.xpath_queries["//h1"] = [raw]
 
     assert driver.find_element(By.XPATH, "//h1").text == "from xpath"
+
+
+def test_element_find_element_by_xpath(driver):
+    parent = FakeElement()
+    child = FakeElement("nested xpath", tag_name="button")
+    parent.xpath_queries[".//button"] = [child]
+    element = WebElement(parent, driver._runner, driver)
+
+    found = element.find_element(By.XPATH, ".//button")
+
+    assert found.text == "nested xpath"
+    assert parent._xpath_marked == {}
+
+
+def test_element_find_element_by_xpath_can_return_self(driver):
+    parent = FakeElement("self")
+    parent.xpath_queries["."] = [parent]
+    element = WebElement(parent, driver._runner, driver)
+
+    found = element.find_element(By.XPATH, ".")
+
+    assert found.raw is parent
+    assert parent._xpath_marked == {}
+    assert parent._xpath_self_marked == set()
 
 
 def test_missing_element_raises(driver):

@@ -326,6 +326,14 @@ close_btn = driver.find_element(By.CSS_SELECTOR, "button.swt-close-btn")
 element = driver.find_element(By.CSS_SELECTOR, "button")
 ```
 
+Element 내부에서도 CSS selector와 XPath로 하위 element를 찾을 수 있습니다.
+
+```python
+container = driver.find_element(By.CSS_SELECTOR, ".container")
+button = container.find_element(By.XPATH, ".//button")
+items = container.find_elements(By.XPATH, ".//li")
+```
+
 ### 텍스트와 속성
 
 ```python
@@ -1047,7 +1055,6 @@ TimeoutException
 ## 현재 제한 사항
 
 - 완전한 Selenium 대체는 아직 아닙니다.
-- nested XPath, 즉 `element.find_element(By.XPATH, "...")`는 아직 구현되지 않았습니다.
 - `ActionChains`는 기본적인 mouse/touch/key 동작 위주입니다. Selenium의 모든 W3C action sequence를 그대로 구현한 것은 아닙니다.
 - 실제 브라우저 smoke test는 별도 추가가 필요합니다. 현재 테스트는 fake nodriver 객체 기반 단위 테스트입니다.
 
