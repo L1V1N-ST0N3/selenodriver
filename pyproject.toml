@@ -31,6 +31,11 @@ test = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/selenodriver"]
 
+[tool.hatch.build]
+exclude = [
+  "/ignore/**",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
