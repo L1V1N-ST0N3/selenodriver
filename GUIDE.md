@@ -61,7 +61,7 @@ from selenodriver.webdriver.support import expected_conditions as EC
 
 ## 버전과 의존성
 
-현재 공개 기준 버전은 `0.1.0`입니다.
+현재 공개 기준 버전은 `0.1.1`입니다.
 
 패키지 요구사항:
 
@@ -74,7 +74,7 @@ nodriver >= 0.39
 
 ```toml
 [project]
-version = "0.1.0"
+version = "0.1.1"
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",
@@ -182,6 +182,12 @@ options.lang = "ko-KR"
 options.add_experimental_option("prefs", {"download.default_directory": "downloads"})
 ```
 
+Selenium에서 흔히 사용하는 인자 형식도 지원합니다. 이 값은 nodriver의 전용 `user_data_dir` 옵션으로 분리됩니다.
+
+```python
+options.add_argument(r"--user-data-dir=C:\profiles\my-profile")
+```
+
 호환 import:
 
 ```python
@@ -261,7 +267,10 @@ print(driver.capabilities)
 
 ```python
 result = driver.execute_script("document.title")
+same_result = driver.execute_script("return document.title")
 ```
+
+표현식과 Selenium식 top-level `return`을 모두 지원하며 CDP `RemoteObject` 결과는 가능한 경우 Python 값으로 변환합니다.
 
 Selenium식 `arguments[0]` element 전달도 지원합니다.
 
@@ -507,6 +516,14 @@ from selenodriver import ActionChains
 ActionChains(driver).move_to_element(element).click().perform()
 ```
 
+modifier 키 조합은 CDP key event로 전달됩니다.
+
+```python
+from selenodriver import Keys
+
+ActionChains(driver).key_down(Keys.CONTROL).send_keys("v").key_up(Keys.CONTROL).perform()
+```
+
 액션은 체인에 쌓이고, `perform()` 호출 시 순서대로 실행됩니다.
 
 지원 메서드:
@@ -719,6 +736,8 @@ alert = driver.switch_to.alert
 alert.dismiss()
 ```
 
+열린 alert가 없으면 `NoAlertPresentException`이 발생합니다. `EC.alert_is_present()`는 이 경우 예외 대신 `False`를 반환합니다.
+
 ## Window Handles
 
 ```python
@@ -759,6 +778,8 @@ driver.get_cookies()
 driver.delete_cookie("session")
 driver.delete_all_cookies()
 ```
+
+`get_cookies()`는 현재 URL 범위를 먼저 조회하고 결과가 없거나 실패하면 브라우저 전체 쿠키 조회로 fallback합니다.
 
 쿠키 dict는 Selenium의 일반 형식에 맞췄습니다.
 
@@ -840,6 +861,19 @@ element에서도 현재 driver/tab을 통해 CDP command를 보낼 수 있습니
 
 ```python
 element.send_cdp(cdp.dom.scroll_into_view_if_needed(...))
+```
+
+Selenium 이식 코드를 위한 얇은 호환 래퍼도 제공합니다. 현재 init script 추가와 제거를 지원하며, 나머지 명령은 타입이 명확한 `send_cdp()` 사용을 권장합니다.
+
+```python
+result = driver.execute_cdp_cmd(
+    "Page.addScriptToEvaluateOnNewDocument",
+    {"source": "window.__marker = true"},
+)
+driver.execute_cdp_cmd(
+    "Page.removeScriptToEvaluateOnNewDocument",
+    {"identifier": result["identifier"]},
+)
 ```
 
 더 낮은 수준의 접근이 필요하면 raw 객체도 열어두었습니다.
@@ -1047,8 +1081,13 @@ driver.implicitly_wait(5)
 
 ```python
 SelenoDriverException
+WebDriverException
+NoAlertPresentException
 NoSuchElementException
 NoSuchWindowException
+NoSuchFrameException
+StaleElementReferenceException
+ElementClickInterceptedException
 TimeoutException
 ```
 

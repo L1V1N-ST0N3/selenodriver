@@ -50,14 +50,21 @@ class Options:
 
     def to_nodriver_kwargs(self) -> dict[str, Any]:
         kwargs: dict[str, Any] = {}
-        if self.arguments:
-            kwargs["browser_args"] = list(self.arguments)
+        browser_args: list[str] = []
+        user_data_dir = self._user_data_dir
+        for argument in self.arguments:
+            if argument.startswith("--user-data-dir="):
+                user_data_dir = argument.split("=", 1)[1]
+            else:
+                browser_args.append(argument)
+        if browser_args:
+            kwargs["browser_args"] = browser_args
         if self.binary_location:
             kwargs["browser_executable_path"] = self.binary_location
         if self._headless is not None:
             kwargs["headless"] = self._headless
-        if self._user_data_dir is not None:
-            kwargs["user_data_dir"] = self._user_data_dir
+        if user_data_dir is not None:
+            kwargs["user_data_dir"] = user_data_dir
         if self._lang is not None:
             kwargs["lang"] = self._lang
         prefs = self.experimental_options.get("prefs")

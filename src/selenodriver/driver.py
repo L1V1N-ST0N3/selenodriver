@@ -1,13 +1,21 @@
 from __future__ import annotations
 
 import base64
+import re
 import time
 from typing import Any
 
 from .alert import Alert
 from .by import By, locator_to_css
 from .element import WebElement
-from .exceptions import NoSuchElementException, NoSuchFrameException, NoSuchWindowException, TimeoutException
+from .exceptions import (
+    NoAlertPresentException,
+    NoSuchElementException,
+    NoSuchFrameException,
+    NoSuchWindowException,
+    SelenoDriverException,
+    TimeoutException,
+)
 from .extensions import SelenoDriverExtension
 from .options import Options
 from .sync import SyncRunner
@@ -36,6 +44,8 @@ class SwitchTo:
 
     @property
     def alert(self) -> Alert:
+        if self._driver._current_alert is None:
+            raise NoAlertPresentException("No alert is currently open")
         return self._driver.alert
 
 
@@ -356,11 +366,60 @@ class Chrome:
 
     def execute_script(self, script: str, *args: Any) -> Any:
         if args:
-            return self._execute_script_with_args(script, *args)
-        return self._runner.run(self._tab.evaluate(script, return_by_value=True))
+            return self._normalize_script_result(self._execute_script_with_args(script, *args))
+        body = script if script is not None else ""
+        if re.search(r"(^|[;{}\n])\s*return\b", body):
+            wrapped = f"(function(){{ {body}\n }})()"
+        else:
+            wrapped = f"(function(){{ return ({body}); }})()"
+        return self._normalize_script_result(
+            self._runner.run(self._tab.evaluate(wrapped, return_by_value=True))
+        )
+
+    @staticmethod
+    def _normalize_script_result(value: Any) -> Any:
+        if value is None:
+            return None
+        type_name = type(value).__name__
+        if type_name == "ExceptionDetails":
+            message = getattr(value, "text", None) or str(value)
+            raise SelenoDriverException(message)
+        if type_name == "RemoteObject":
+            raw = getattr(value, "value", None)
+            if raw is not None:
+                return raw
+            deep = getattr(value, "deep_serialized_value", None)
+            if deep is not None and getattr(deep, "value", None) is not None:
+                return deep.value
+            return None
+        return value
 
     def send_cdp(self, command: Any) -> Any:
         return self._runner.run(self._tab.send(command))
+
+    def execute_cdp_cmd(self, cmd: str, cmd_args: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Execute a supported Selenium-style CDP command."""
+        params = cmd_args or {}
+        if cmd == "Page.addScriptToEvaluateOnNewDocument":
+            if "source" not in params:
+                raise ValueError("source is required for Page.addScriptToEvaluateOnNewDocument")
+            identifier = self.add_init_script(
+                params["source"],
+                run_immediately=params.get("runImmediately", True),
+                world_name=params.get("worldName"),
+            )
+            return {"identifier": str(identifier)}
+        if cmd == "Page.removeScriptToEvaluateOnNewDocument":
+            from nodriver import cdp
+
+            identifier = params.get("identifier")
+            if identifier is None:
+                raise ValueError("identifier is required for Page.removeScriptToEvaluateOnNewDocument")
+            if not hasattr(identifier, "to_json"):
+                identifier = cdp.page.ScriptIdentifier(identifier)
+            self.remove_init_script(identifier)
+            return {}
+        raise SelenoDriverException(f"Unsupported CDP command: {cmd}")
 
     def scroll_to(self, x: int, y: int) -> None:
         self.execute_script(f"window.scrollTo({int(x)}, {int(y)})")
@@ -497,7 +556,17 @@ class Chrome:
     def get_cookies(self) -> list[dict[str, Any]]:
         from nodriver import cdp
 
-        cookies = self._runner.run(self._tab.send(cdp.network.get_cookies([self.current_url]))) or []
+        try:
+            cookies = self._runner.run(self._tab.send(cdp.network.get_cookies([self.current_url]))) or []
+        except Exception:
+            cookies = []
+        if not cookies:
+            try:
+                cookies = self._runner.run(self._tab.send(cdp.network.get_all_cookies())) or []
+            except Exception:
+                cookies = []
+        if not isinstance(cookies, list):
+            cookies = getattr(cookies, "cookies", None) or []
         return [self._cookie_to_dict(cookie) for cookie in cookies]
 
     def get_cookie(self, name: str) -> dict[str, Any] | None:
@@ -555,6 +624,8 @@ class Chrome:
         deadline = time.monotonic() + self._page_load_timeout
         while True:
             ready_state = self.execute_script("document.readyState")
+            if not isinstance(ready_state, str):
+                ready_state = str(getattr(ready_state, "value", "") or "")
             if ready_state in accepted:
                 return
             if time.monotonic() >= deadline:

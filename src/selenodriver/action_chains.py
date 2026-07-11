@@ -4,7 +4,10 @@ from collections.abc import Callable
 from typing import Any
 
 from .element import WebElement
-from .keys import dispatch_key, dispatch_key_press, is_special_key, split_key_sequence
+from .keys import Keys, dispatch_key, dispatch_key_press, is_special_key, split_key_sequence
+
+
+_MODIFIER_BITS = {Keys.ALT: 1, Keys.CONTROL: 2, Keys.META: 4, Keys.COMMAND: 4, Keys.SHIFT: 8}
 
 
 class ActionChains:
@@ -14,6 +17,7 @@ class ActionChains:
         self._actions: list[Callable[[], None]] = []
         self._x = 0
         self._y = 0
+        self._modifiers: set[str] = set()
 
     def perform(self) -> None:
         try:
@@ -24,6 +28,7 @@ class ActionChains:
 
     def reset_actions(self) -> None:
         self._actions.clear()
+        self._modifiers.clear()
 
     def click(
         self,
@@ -229,7 +234,9 @@ class ActionChains:
         def _action() -> None:
             if element is not None:
                 element._runner.run(element.raw.focus())
-            dispatch_key(self._driver.raw_tab, self._driver._runner, value, "keyDown")
+            if value in _MODIFIER_BITS:
+                self._modifiers.add(value)
+            dispatch_key(self._driver.raw_tab, self._driver._runner, value, "keyDown", self._modifier_mask())
 
         self._actions.append(_action)
         return self
@@ -238,7 +245,8 @@ class ActionChains:
         def _action() -> None:
             if element is not None:
                 element._runner.run(element.raw.focus())
-            dispatch_key(self._driver.raw_tab, self._driver._runner, value, "keyUp")
+            dispatch_key(self._driver.raw_tab, self._driver._runner, value, "keyUp", self._modifier_mask())
+            self._modifiers.discard(value)
 
         self._actions.append(_action)
         return self
@@ -259,12 +267,17 @@ class ActionChains:
     def _send_keys(self, *values: object) -> None:
         for chunk in split_key_sequence(*values):
             if is_special_key(chunk):
-                dispatch_key_press(self._driver.raw_tab, self._driver._runner, chunk)
+                dispatch_key_press(self._driver.raw_tab, self._driver._runner, chunk, self._modifier_mask())
+            elif self._modifiers:
+                dispatch_key_press(self._driver.raw_tab, self._driver._runner, chunk, self._modifier_mask())
             else:
                 self._driver.execute_script(
                     "document.activeElement && "
                     f"(document.activeElement.value += {chunk!r})"
                 )
+
+    def _modifier_mask(self) -> int:
+        return sum(_MODIFIER_BITS[value] for value in self._modifiers)
 
     def _mouse_event(self, type_: str, *, button: str | None = None, buttons: int | None = None, click_count: int | None = None) -> None:
         from nodriver import cdp

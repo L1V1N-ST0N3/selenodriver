@@ -155,7 +155,7 @@ def split_key_sequence(*values: object) -> Iterator[str]:
         yield "".join(buffer)
 
 
-def dispatch_key(tab: Any, runner: Any, value: str, type_: str = "keyDown") -> None:
+def dispatch_key(tab: Any, runner: Any, value: str, type_: str = "keyDown", modifiers: int = 0) -> None:
     from nodriver import cdp
 
     definition = KEY_DEFINITIONS.get(value)
@@ -168,10 +168,11 @@ def dispatch_key(tab: Any, runner: Any, value: str, type_: str = "keyDown") -> N
         key=definition.key,
         code=definition.code,
         windows_virtual_key_code=definition.windows_virtual_key_code,
+        modifiers=modifiers,
     )
     runner.run(tab.send(event))
 
 
-def dispatch_key_press(tab: Any, runner: Any, value: str) -> None:
-    dispatch_key(tab, runner, value, "keyDown")
-    dispatch_key(tab, runner, value, "keyUp")
+def dispatch_key_press(tab: Any, runner: Any, value: str, modifiers: int = 0) -> None:
+    dispatch_key(tab, runner, value, "keyDown", modifiers)
+    dispatch_key(tab, runner, value, "keyUp", modifiers)

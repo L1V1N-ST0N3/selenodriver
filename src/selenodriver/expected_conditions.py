@@ -173,8 +173,14 @@ def new_window_is_opened(current_handles: Iterable[str]):
 
 def alert_is_present():
     def _predicate(driver: Any):
-        alert = driver.switch_to.alert
-        return alert if driver._current_alert is not None else False
+        try:
+            return driver.switch_to.alert
+        except Exception as error:
+            from .exceptions import NoAlertPresentException
+
+            if isinstance(error, NoAlertPresentException):
+                return False
+            raise
 
     return _predicate
 

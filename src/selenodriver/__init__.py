@@ -4,11 +4,15 @@ from .by import By
 from .driver import Chrome
 from .element import WebElement
 from .exceptions import (
+    ElementClickInterceptedException,
+    NoAlertPresentException,
     NoSuchElementException,
     NoSuchFrameException,
     NoSuchWindowException,
     SelenoDriverException,
     TimeoutException,
+    StaleElementReferenceException,
+    WebDriverException,
 )
 from .extensions import SelenoDriverExtension
 from .keys import Keys
@@ -27,15 +31,19 @@ __all__ = [
     "Keys",
     "MobileEmulationExtension",
     "MobileProfile",
+    "ElementClickInterceptedException",
+    "NoAlertPresentException",
     "NoSuchElementException",
     "NoSuchFrameException",
     "NoSuchWindowException",
     "Options",
     "SelenoDriverException",
     "SelenoDriverExtension",
+    "StaleElementReferenceException",
     "ShadowRoot",
     "TimeoutException",
     "Timeouts",
     "WebDriverWait",
+    "WebDriverException",
     "WebElement",
 ]

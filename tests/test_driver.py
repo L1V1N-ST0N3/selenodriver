@@ -13,6 +13,7 @@ from selenodriver import (
     Keys,
     MobileEmulationExtension,
     MobileProfile,
+    NoAlertPresentException,
     NoSuchElementException,
     NoSuchFrameException,
     NoSuchWindowException,
@@ -165,6 +166,7 @@ class FakeTab:
         self.dialog_commands = []
         self.script_commands = []
         self.cookies = []
+        self.url_cookies = None
         self.frames = []
         self.delayed_queries = {}
         self.focused_element = None
@@ -173,6 +175,7 @@ class FakeTab:
         self.evaluated_scripts = []
         self.scroll_position = {"x": 0, "y": 0}
         self.cdp_methods = []
+        self.cdp_requests = []
 
     def query_selector_all(self, selector):
         if selector in self.delayed_queries:
@@ -191,12 +194,16 @@ class FakeTab:
 
     def evaluate(self, script, return_by_value=True):
         self.evaluated_scripts.append(script)
-        if script == "document.title":
+        if "document.title" in script:
             return "Fake title"
-        if script == "window.location.href":
+        if "window.location.href" in script:
             return "https://example.test/"
-        if script == "document.readyState":
+        if "document.readyState" in script:
             return self.ready_state
+        if "return 1" in script:
+            return 1
+        if "const value = 2; return value" in script:
+            return 2
         if "window.innerWidth" in script:
             return {"width": 400, "height": 800}
         if "window.scrollX" in script:
@@ -220,6 +227,7 @@ class FakeTab:
                 request = next(event)
                 method = request.get("method", "")
                 self.cdp_methods.append(method)
+                self.cdp_requests.append(request)
                 if method == "DOM.resolveNode":
                     from nodriver import cdp
 
@@ -228,6 +236,8 @@ class FakeTab:
                     self.script_commands.append(request)
                     return (type("RemoteObject", (), {"value": "script-result"})(), None)
                 if method == "Network.getCookies":
+                    return self.cookies if self.url_cookies is None else self.url_cookies
+                if method == "Network.getAllCookies":
                     return self.cookies
                 if method == "Network.setCookie":
                     self.cookies.append(
@@ -529,6 +539,16 @@ def test_options_to_nodriver_kwargs():
     assert options.capabilities["goog:chromeOptions"]["args"][0] == "--no-first-run"
 
 
+def test_options_extracts_user_data_dir_argument():
+    options = Options()
+    options.add_arguments("--no-first-run", "--user-data-dir=C:/profiles/test")
+
+    assert options.to_nodriver_kwargs() == {
+        "browser_args": ["--no-first-run"],
+        "user_data_dir": "C:/profiles/test",
+    }
+
+
 def test_chrome_passes_options_to_nodriver(monkeypatch):
     import nodriver
 
@@ -582,8 +602,8 @@ def test_scroll_helpers(driver):
     driver.scroll_to(10, 20)
     driver.scroll_by(1, 2)
 
-    assert "window.scrollTo(10, 20)" in driver.raw_tab.evaluated_scripts
-    assert "window.scrollBy(1, 2)" in driver.raw_tab.evaluated_scripts
+    assert any("window.scrollTo(10, 20)" in script for script in driver.raw_tab.evaluated_scripts)
+    assert any("window.scrollBy(1, 2)" in script for script in driver.raw_tab.evaluated_scripts)
 
 
 def test_touch_scroll_by_dispatches_touch_events(driver):
@@ -610,11 +630,46 @@ def test_execute_script_with_element_and_value_args(driver):
     assert driver.raw_tab.script_commands
 
 
+def test_execute_script_supports_return_and_expression_styles(driver):
+    assert driver.execute_script("return 1") == 1
+    assert driver.execute_script("const value = 2; return value") == 2
+    assert driver.execute_script("document.readyState") == "complete"
+
+
+def test_execute_script_normalizes_remote_objects_and_errors():
+    remote = type("RemoteObject", (), {"value": "complete"})()
+    error = type("ExceptionDetails", (), {"text": "bad script"})()
+
+    assert Chrome._normalize_script_result(remote) == "complete"
+    with pytest.raises(Exception, match="bad script"):
+        Chrome._normalize_script_result(error)
+
+
 def test_send_cdp_helpers(driver):
     assert driver.send_cdp(FakeCdpCommand()) == "cdp-result"
 
     element = WebElement(FakeElement(), driver._runner, driver)
     assert element.send_cdp(FakeCdpCommand()) == "cdp-result"
+
+
+def test_execute_cdp_cmd_adds_and_removes_init_script(driver):
+    result = driver.execute_cdp_cmd(
+        "Page.addScriptToEvaluateOnNewDocument",
+        {"source": "window.__x = 1"},
+    )
+    driver.execute_cdp_cmd(
+        "Page.removeScriptToEvaluateOnNewDocument",
+        {"identifier": result["identifier"]},
+    )
+
+    assert result == {"identifier": "script-id-1"}
+    assert "Page.addScriptToEvaluateOnNewDocument" in driver.raw_tab.cdp_methods
+    assert "Page.removeScriptToEvaluateOnNewDocument" in driver.raw_tab.cdp_methods
+
+
+def test_execute_cdp_cmd_rejects_unknown_command(driver):
+    with pytest.raises(Exception, match="Unsupported CDP command"):
+        driver.execute_cdp_cmd("Network.unknown", {})
 
 
 def test_cookie_api(driver):
@@ -629,6 +684,28 @@ def test_cookie_api(driver):
     driver.add_cookie({"name": "a", "value": "1"})
     driver.delete_all_cookies()
     assert driver.get_cookies() == []
+
+
+def test_get_cookies_falls_back_to_all_browser_cookies(driver):
+    cookie = type(
+        "Cookie",
+        (),
+        {
+            "name": "NID_AUT",
+            "value": "token",
+            "domain": ".naver.com",
+            "path": "/",
+            "secure": True,
+            "http_only": True,
+            "expires": -1,
+            "same_site": None,
+        },
+    )()
+    driver.raw_tab.url_cookies = []
+    driver.raw_tab.cookies = [cookie]
+
+    assert driver.get_cookies()[0]["name"] == "NID_AUT"
+    assert driver.raw_tab.cdp_methods[-2:] == ["Network.getCookies", "Network.getAllCookies"]
 
 
 def test_driver_screenshot_api(driver):
@@ -1065,6 +1142,11 @@ def test_alert_is_present_returns_false_without_dialog(driver):
     assert EC.alert_is_present()(driver) is False
 
 
+def test_switch_to_alert_raises_without_dialog(driver):
+    with pytest.raises(NoAlertPresentException):
+        _ = driver.switch_to.alert
+
+
 def test_support_import_paths():
     from selenodriver.support import expected_conditions as support_ec
     from selenodriver.support.select import Select
@@ -1234,3 +1316,12 @@ def test_action_chains_key_down_and_key_up(driver):
     ActionChains(driver).key_down(Keys.CONTROL).key_up(Keys.CONTROL).perform()
 
     assert len(driver.raw_tab.sent) == 2
+
+
+def test_action_chains_sends_modified_key_through_cdp(driver):
+    ActionChains(driver).key_down(Keys.CONTROL).send_keys("v").key_up(Keys.CONTROL).perform()
+
+    key_requests = [request for request in driver.raw_tab.cdp_requests if request["method"] == "Input.dispatchKeyEvent"]
+    assert len(key_requests) == 4
+    assert key_requests[1]["params"]["key"] == "v"
+    assert key_requests[1]["params"]["modifiers"] == 2
