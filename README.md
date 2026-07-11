@@ -4,19 +4,23 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 
 `selenodriver`는 기존 Selenium 코드 스타일을 최대한 유지하면서, 내부 동작은 `nodriver`와 CDP 기반으로 처리하는 호환 레이어입니다.
 
-## 목차
+`selenodriver` is a compatibility layer that preserves familiar Selenium coding patterns while using `nodriver` and CDP internally.
 
-- [핵심 강점](#핵심-강점)
-- [버전과 의존성](#버전과-의존성)
-- [빠른 시작](#빠른-시작)
-- [클릭과 입력 방식](#클릭과-입력-방식)
-- [좌표 클릭 / 랜덤 위치 클릭](#좌표-클릭--랜덤-위치-클릭)
-- [모바일 관련 기능](#모바일-관련-기능)
-- [현재 구현 범위](#현재-구현-범위)
+**문서 / Documentation:** [한국어 가이드](https://github.com/L1V1N-ST0N3/selenodriver/blob/master/GUIDE.md) | [English guide](https://github.com/L1V1N-ST0N3/selenodriver/blob/master/GUIDE_EN.md)
+
+## 목차 / Contents
+
+- [핵심 강점 / Key Features](#핵심-강점--key-features)
+- [버전과 의존성 / Version and Dependencies](#버전과-의존성--version-and-dependencies)
+- [빠른 시작 / Quick Start](#빠른-시작--quick-start)
+- [클릭과 입력 방식 / Click and Input Modes](#클릭과-입력-방식--click-and-input-modes)
+- [좌표 클릭 / Offset and Randomized Clicks](#좌표-클릭--랜덤-위치-클릭--offset-and-randomized-clicks)
+- [모바일 관련 기능 / Mobile Features](#모바일-관련-기능--mobile-features)
+- [현재 구현 범위 / Implementation Status](#현재-구현-범위--implementation-status)
 - [License](#license)
 - [개발](#개발)
 
-## 핵심 강점
+## 핵심 강점 / Key Features
 
 - Selenium과 비슷한 동기 API: `await` 없이 `driver.get()`, `find_element()`, `element.click()` 형태로 사용합니다.
 - CDP 기반 마우스 클릭: 기본 `element.click()`은 JS `el.click()`이 아니라 화면 좌표를 계산해서 `Input.dispatchMouseEvent`를 보냅니다.
@@ -26,15 +30,25 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - Selenium 호환 import: `selenodriver.webdriver.*` 경로를 지원해 기존 Selenium 코드와 비슷한 구조로 옮기기 쉽습니다.
 - 확장 모듈 구조: 외부/private extension을 붙여 브라우저 시작, 이동, 새 탭, context 변경 시점에 자동 로직을 적용할 수 있습니다.
 
-## 버전과 의존성
+English summary:
 
-Current package version:
+- Synchronous Selenium-style API: use `driver.get()`, `find_element()`, and `element.click()` without `await`.
+- CDP mouse input: the default click calculates viewport coordinates and dispatches `Input.dispatchMouseEvent` instead of calling JavaScript `el.click()`.
+- Explicit input modes: mouse, touch, and JavaScript clicks are separate operations.
+- Coordinate control: center, offset, absolute, and randomized in-element clicks are supported.
+- Mobile workflows: touch clicks, scrolling, double tap, long press, touch drag, and mobile emulation are included.
+- Migration-friendly imports: Selenium-like modules are available under `selenodriver.webdriver.*`.
+- Extension hooks: external or private modules can react to browser attach, navigation, tab discovery, and context changes.
+
+## 버전과 의존성 / Version and Dependencies
+
+현재 패키지 버전 / Current package version:
 
 ```text
 selenodriver 0.1.1
 ```
 
-Runtime requirements:
+실행 요구사항 / Runtime requirements:
 
 ```text
 Python >= 3.10
@@ -49,7 +63,7 @@ dependencies = [
 ]
 ```
 
-## 빠른 시작
+## 빠른 시작 / Quick Start
 
 ```python
 from selenodriver import ActionChains, By, Chrome, Keys, Options
@@ -72,22 +86,28 @@ ActionChains(driver).move_to_element(heading).click().send_keys(Keys.ENTER).perf
 driver.quit()
 ```
 
-## 클릭과 입력 방식
+## 클릭과 입력 방식 / Click and Input Modes
 
 `selenodriver`는 클릭 방식을 의도적으로 분리합니다.
 
-| 방식 | 사용 예 | 내부 동작 | 용도 |
+`selenodriver` intentionally exposes each click mechanism separately.
+
+| 방식 / Mode | 사용 예 / API | 내부 동작 / Implementation | 용도 / Use case |
 | --- | --- | --- | --- |
-| 기본/마우스 클릭 | `element.click()` | CDP `Input.dispatchMouseEvent` | 일반 데스크톱 클릭 |
-| 명시적 마우스 클릭 | `element.mouse_click()` | CDP `mousePressed` / `mouseReleased` | 기본 클릭과 동일 |
-| 터치 클릭 | `element.touch_click()` | CDP `Input.dispatchTouchEvent` | 모바일 탭에 가까운 입력 |
-| JS 클릭 | `element.js_click()` | JS `el.click()` | DOM 메서드를 직접 호출해야 할 때 |
+| 기본/마우스 클릭 / Default mouse | `element.click()` | CDP `Input.dispatchMouseEvent` | 일반 데스크톱 클릭 / Desktop interaction |
+| 명시적 마우스 클릭 / Explicit mouse | `element.mouse_click()` | CDP `mousePressed` / `mouseReleased` | 기본 클릭과 동일 / Explicit mouse control |
+| 터치 클릭 / Touch | `element.touch_click()` | CDP `Input.dispatchTouchEvent` | 모바일 탭 / Mobile tap behavior |
+| JS 클릭 / JavaScript | `element.js_click()` | JS `el.click()` | DOM 직접 호출 / Direct DOM activation |
 
 기본 클릭은 element의 화면상 중앙 좌표를 기준으로 마우스 이벤트를 보냅니다. JS 클릭이 필요한 경우에는 `js_click()`을 별도로 호출합니다.
 
-## 좌표 클릭 / 랜덤 위치 클릭
+The default click sends mouse events to the element's visual center. Call `js_click()` explicitly when direct DOM activation is required.
+
+## 좌표 클릭 / 랜덤 위치 클릭 / Offset and Randomized Clicks
 
 Selenium의 `ActionChains` 스타일로 element 중앙이 아닌 지점을 클릭할 수 있습니다.
+
+Selenium-style `ActionChains` can click a point away from the element center.
 
 ```python
 from selenodriver import ActionChains
@@ -100,7 +120,11 @@ ActionChains(driver) \
 
 `xoffset`, `yoffset`은 Selenium 호환 기준으로 element의 중앙점 기준입니다.
 
+For Selenium compatibility, `xoffset` and `yoffset` are measured from the element center.
+
 element 내부의 랜덤 위치를 클릭하려면 좌상단 기준 랜덤 좌표를 만든 뒤 중앙점 기준 offset으로 변환합니다.
+
+To click a randomized point inside an element, generate top-left-relative coordinates and convert them to center-relative offsets.
 
 ```python
 import random
@@ -121,6 +145,8 @@ ActionChains(driver) \
 
 같은 위치를 터치 입력으로 누를 수도 있습니다.
 
+The same point can be activated with touch input.
+
 ```python
 ActionChains(driver) \
     .touch_move_to_element_with_offset(element, xoffset, yoffset) \
@@ -128,9 +154,11 @@ ActionChains(driver) \
     .perform()
 ```
 
-## 모바일 관련 기능
+## 모바일 관련 기능 / Mobile Features
 
 모바일 테스트를 위해 다음 기능을 제공합니다.
+
+The following APIs support mobile-oriented testing.
 
 - `element.touch_click()`
 - `element.click(input_type="touch")`
@@ -146,6 +174,8 @@ ActionChains(driver) \
 
 모바일 에뮬레이션 확장은 UA, viewport, device scale factor, touch emulation, locale, timezone 등을 CDP `Emulation.*` 명령으로 적용합니다. 브라우저 attach, 페이지 이동, context 변경, 새 탭 감지 시점에 다시 적용됩니다.
 
+The mobile emulation extension applies UA, viewport, device scale factor, touch emulation, locale, and timezone through CDP `Emulation.*` commands. Settings are reapplied after attach, navigation, context changes, and new-tab discovery.
+
 ```python
 from selenodriver import Chrome, MobileEmulationExtension
 
@@ -157,6 +187,8 @@ driver = Chrome(
 ```
 
 직접 프로필 dict도 사용할 수 있습니다.
+
+Custom profile dictionaries are also supported.
 
 ```python
 profile = {
@@ -174,7 +206,7 @@ profile = {
 driver = Chrome(extensions=[MobileEmulationExtension(profile)])
 ```
 
-## 현재 구현 범위
+## 현재 구현 범위 / Implementation Status
 
 This is an early compatibility layer, not a full Selenium replacement yet.
 
@@ -199,23 +231,27 @@ Implemented:
 - action chains: `click`, `touch_click`, `double_click`, `double_tap`, `context_click`, `move_to_element`, `move_to_element_with_offset`, `touch_move_to_element_with_offset`, `move_by_offset`, `drag_and_drop`, `drag_and_drop_by_offset`, `touch_drag_and_drop`, `touch_drag_by_offset`, `click_and_hold`, `long_press`, `release`, `send_keys`, `send_keys_to_element`, `key_down`, `key_up`, `pause`
 - expected conditions: `presence_of_element_located`, `visibility_of_element_located`, `element_to_be_clickable`, `invisibility_of_element_located`, `alert_is_present`, `title_is`, `title_contains`, `url_contains`, `url_to_be`, `url_matches`, text checks, and window count checks
 
-더 자세한 사용법은 [한국어 가이드](GUIDE.md)와 [English guide](GUIDE_EN.md)에 정리되어 있습니다.
+더 자세한 사용법은 [한국어 가이드](https://github.com/L1V1N-ST0N3/selenodriver/blob/master/GUIDE.md)와 [English guide](https://github.com/L1V1N-ST0N3/selenodriver/blob/master/GUIDE_EN.md)에 정리되어 있습니다.
+
+For complete usage details, see the [Korean guide](https://github.com/L1V1N-ST0N3/selenodriver/blob/master/GUIDE.md) or the [English guide](https://github.com/L1V1N-ST0N3/selenodriver/blob/master/GUIDE_EN.md).
 
 ## License
 
 This project is licensed under the GNU Affero General Public License v3.0.
 
+이 프로젝트는 GNU Affero General Public License v3.0으로 배포됩니다.
+
 `selenodriver` depends on `nodriver`, which is licensed under AGPL-3.0, so this project follows the same license family.
 
-## 개발
+## 개발 / Development
 
-Install from PyPI:
+PyPI에서 설치 / Install from PyPI:
 
 ```powershell
 python -m pip install selenodriver
 ```
 
-For local development and tests:
+로컬 개발 및 테스트 / Local development and tests:
 
 ```powershell
 python -m pip install -e .
@@ -223,7 +259,7 @@ python -m pip install pytest
 pytest
 ```
 
-Run real browser smoke tests explicitly:
+실제 브라우저 smoke test / Real-browser smoke tests:
 
 ```powershell
 $env:SELENODRIVER_RUN_SMOKE='1'

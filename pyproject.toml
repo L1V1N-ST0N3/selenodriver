@@ -23,6 +23,11 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
 ]
 
+[project.urls]
+Homepage = "https://github.com/L1V1N-ST0N3/selenodriver"
+Repository = "https://github.com/L1V1N-ST0N3/selenodriver"
+Documentation = "https://github.com/L1V1N-ST0N3/selenodriver/blob/master/GUIDE_EN.md"
+
 [project.optional-dependencies]
 test = [
   "pytest>=8",
