@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 from .element import WebElement
-from .keys import Keys, dispatch_key, dispatch_key_press, is_special_key, split_key_sequence
+from .keys import Keys, dispatch_key, dispatch_key_press, dispatch_text, is_special_key, split_key_sequence
 
 
 _MODIFIER_BITS = {Keys.ALT: 1, Keys.CONTROL: 2, Keys.META: 4, Keys.COMMAND: 4, Keys.SHIFT: 8}
@@ -269,12 +269,9 @@ class ActionChains:
             if is_special_key(chunk):
                 dispatch_key_press(self._driver.raw_tab, self._driver._runner, chunk, self._modifier_mask())
             elif self._modifiers:
-                dispatch_key_press(self._driver.raw_tab, self._driver._runner, chunk, self._modifier_mask())
+                dispatch_text(self._driver.raw_tab, self._driver._runner, chunk, self._modifier_mask())
             else:
-                self._driver.execute_script(
-                    "document.activeElement && "
-                    f"(document.activeElement.value += {chunk!r})"
-                )
+                dispatch_text(self._driver.raw_tab, self._driver._runner, chunk)
 
     def _modifier_mask(self) -> int:
         return sum(_MODIFIER_BITS[value] for value in self._modifiers)

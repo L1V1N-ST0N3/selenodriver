@@ -371,6 +371,8 @@ class Chrome:
         body = script if script is not None else ""
         if re.search(r"(^|[;{}\n])\s*return\b", body):
             wrapped = f"(function(){{ {body}\n }})()"
+        elif re.match(r"\s*(?:const|let|var|if|for|while|try|throw|class|function)\b", body) or ";" in body:
+            wrapped = f"(function(){{ {body}\n }})()"
         else:
             wrapped = f"(function(){{ return ({body}); }})()"
         return self._normalize_script_result(
@@ -400,6 +402,8 @@ class Chrome:
 
     def execute_cdp_cmd(self, cmd: str, cmd_args: dict[str, Any] | None = None) -> dict[str, Any]:
         """Execute a supported Selenium-style CDP command."""
+        from nodriver import cdp
+
         params = cmd_args or {}
         if cmd == "Page.addScriptToEvaluateOnNewDocument":
             if "source" not in params:
@@ -411,8 +415,6 @@ class Chrome:
             )
             return {"identifier": str(identifier)}
         if cmd == "Page.removeScriptToEvaluateOnNewDocument":
-            from nodriver import cdp
-
             identifier = params.get("identifier")
             if identifier is None:
                 raise ValueError("identifier is required for Page.removeScriptToEvaluateOnNewDocument")
@@ -420,7 +422,61 @@ class Chrome:
                 identifier = cdp.page.ScriptIdentifier(identifier)
             self.remove_init_script(identifier)
             return {}
+        if cmd == "Network.enable":
+            self.send_cdp(cdp.network.enable())
+            return {}
+        if cmd == "Network.setUserAgentOverride":
+            metadata = self._cdp_user_agent_metadata(params.get("userAgentMetadata"))
+            self.send_cdp(cdp.network.set_user_agent_override(
+                params["userAgent"],
+                accept_language=params.get("acceptLanguage"),
+                platform=params.get("platform"),
+                user_agent_metadata=metadata,
+            ))
+            return {}
+        if cmd == "Network.setExtraHTTPHeaders":
+            self.send_cdp(cdp.network.set_extra_http_headers(cdp.network.Headers(params.get("headers", {}))))
+            return {}
+        if cmd == "Emulation.setDeviceMetricsOverride":
+            self.send_cdp(cdp.emulation.set_device_metrics_override(
+                width=int(params["width"]),
+                height=int(params["height"]),
+                device_scale_factor=float(params.get("deviceScaleFactor", 1)),
+                mobile=bool(params.get("mobile", False)),
+            ))
+            return {}
+        if cmd == "Emulation.setTouchEmulationEnabled":
+            self.send_cdp(cdp.emulation.set_touch_emulation_enabled(
+                bool(params.get("enabled", False)),
+                max_touch_points=params.get("maxTouchPoints"),
+            ))
+            return {}
+        if cmd == "Emulation.setTimezoneOverride":
+            self.send_cdp(cdp.emulation.set_timezone_override(params["timezoneId"]))
+            return {}
         raise SelenoDriverException(f"Unsupported CDP command: {cmd}")
+
+    @staticmethod
+    def _cdp_user_agent_metadata(value: Any) -> Any:
+        if not isinstance(value, dict):
+            return None
+        from nodriver import cdp
+
+        brand = lambda item: cdp.emulation.UserAgentBrandVersion(
+            str(item.get("brand", "")), str(item.get("version", ""))
+        )
+        return cdp.emulation.UserAgentMetadata(
+            platform=str(value.get("platform", "")),
+            platform_version=str(value.get("platformVersion", "")),
+            architecture=str(value.get("architecture", "")),
+            model=str(value.get("model", "")),
+            mobile=bool(value.get("mobile", False)),
+            brands=[brand(item) for item in value.get("brands", []) if isinstance(item, dict)],
+            full_version_list=[brand(item) for item in value.get("fullVersionList", []) if isinstance(item, dict)],
+            full_version=value.get("uaFullVersion"),
+            bitness=value.get("bitness"),
+            wow64=value.get("wow64"),
+        )
 
     def scroll_to(self, x: int, y: int) -> None:
         self.execute_script(f"window.scrollTo({int(x)}, {int(y)})")
@@ -598,7 +654,7 @@ class Chrome:
             cookies = []
         if not cookies:
             try:
-                cookies = self._runner.run(self._tab.send(cdp.network.get_all_cookies())) or []
+                cookies = self._runner.run(self._tab.send(cdp.storage.get_cookies())) or []
             except Exception:
                 cookies = []
         if not isinstance(cookies, list):

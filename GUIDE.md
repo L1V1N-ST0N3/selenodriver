@@ -61,7 +61,7 @@ from selenodriver.webdriver.support import expected_conditions as EC
 
 ## 버전과 의존성
 
-현재 패키지 버전은 `0.1.2`입니다.
+현재 패키지 버전은 `0.1.3`입니다.
 
 패키지 요구사항:
 
@@ -74,7 +74,7 @@ nodriver >= 0.39
 
 ```toml
 [project]
-version = "0.1.2"
+version = "0.1.3"
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",
@@ -452,6 +452,16 @@ active.send_keys("hello")
 
 ### Shadow DOM
 
+Shadow root 내부에서도 CSS selector와 XPath를 사용할 수 있습니다.
+
+```python
+shadow = host.shadow_root
+button = shadow.find_element(By.XPATH, ".//button[@type='submit']")
+items = shadow.find_elements(By.XPATH, ".//li")
+```
+
+XPath 결과는 shadow root를 context node로 평가하며, 조회 중 임시 marker를 사용한 뒤 정리합니다.
+
 ```python
 shadow = element.shadow_root
 button = shadow.find_element(By.CSS_SELECTOR, "button")
@@ -524,6 +534,13 @@ modifier 키 조합은 CDP key event로 전달됩니다.
 from selenodriver import Keys
 
 ActionChains(driver).key_down(Keys.CONTROL).send_keys("v").key_up(Keys.CONTROL).perform()
+```
+
+`WebElement.send_keys()`와 `ActionChains.send_keys()`의 일반 문자열은 기본적으로 CDP `Input.dispatchKeyEvent`로 전달됩니다. 따라서 실제 keydown/keyup 및 input 흐름을 사용하며 PC와 모바일 emulation에서 같은 API를 사용할 수 있습니다. JavaScript로 value를 직접 변경해야 하는 경우에만 명시적으로 `send_keys_js()`를 사용합니다.
+
+```python
+element.send_keys("abc")       # 기본값: 실제 CDP 키 입력
+element.send_keys_js("abc")    # 명시적 JS value 변경
 ```
 
 액션은 체인에 쌓이고, `perform()` 호출 시 순서대로 실행됩니다.
@@ -1097,7 +1114,7 @@ TimeoutException
 
 - 완전한 Selenium 대체는 아직 아닙니다.
 - `ActionChains`는 기본적인 mouse/touch/key 동작 위주입니다. Selenium의 모든 W3C action sequence를 그대로 구현한 것은 아닙니다.
-- 실제 브라우저 smoke test는 별도 추가가 필요합니다. 현재 테스트는 fake nodriver 객체 기반 단위 테스트입니다.
+- 기본 테스트는 fake nodriver 객체 기반 단위 테스트이며, 실제 브라우저 smoke test는 환경 변수로 명시적으로 실행합니다.
 
 ## 개발
 

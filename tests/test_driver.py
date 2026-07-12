@@ -258,7 +258,7 @@ class FakeTab:
                     return None
                 if method == "Network.getCookies":
                     return self.cookies if self.url_cookies is None else self.url_cookies
-                if method == "Network.getAllCookies":
+                if method == "Storage.getCookies":
                     return self.cookies
                 if method == "Network.setCookie":
                     self.cookies.append(
@@ -694,6 +694,12 @@ def test_execute_script_supports_return_and_expression_styles(driver):
     assert driver.execute_script("document.readyState") == "complete"
 
 
+def test_execute_script_supports_statement_bodies_without_return(driver):
+    driver.execute_script("const value = 1; document.title = value;")
+
+    assert driver.raw_tab.evaluated_scripts[-1].startswith("(function(){")
+
+
 def test_execute_script_normalizes_remote_objects_and_errors():
     remote = type("RemoteObject", (), {"value": "complete"})()
     error = type("ExceptionDetails", (), {"text": "bad script"})()
@@ -730,6 +736,21 @@ def test_execute_cdp_cmd_rejects_unknown_command(driver):
         driver.execute_cdp_cmd("Network.unknown", {})
 
 
+def test_execute_cdp_cmd_supports_common_network_and_emulation_commands(driver):
+    driver.execute_cdp_cmd("Network.enable", {})
+    driver.execute_cdp_cmd("Network.setUserAgentOverride", {"userAgent": "UA", "platform": "Android"})
+    driver.execute_cdp_cmd("Network.setExtraHTTPHeaders", {"headers": {"Accept-Language": "ko-KR"}})
+    driver.execute_cdp_cmd("Emulation.setDeviceMetricsOverride", {
+        "width": 390, "height": 844, "deviceScaleFactor": 3, "mobile": True,
+    })
+    driver.execute_cdp_cmd("Emulation.setTouchEmulationEnabled", {"enabled": True, "maxTouchPoints": 5})
+    driver.execute_cdp_cmd("Emulation.setTimezoneOverride", {"timezoneId": "Asia/Seoul"})
+
+    assert "Network.setUserAgentOverride" in driver.raw_tab.cdp_methods
+    assert "Network.setExtraHTTPHeaders" in driver.raw_tab.cdp_methods
+    assert "Emulation.setDeviceMetricsOverride" in driver.raw_tab.cdp_methods
+
+
 def test_cookie_api(driver):
     driver.add_cookie({"name": "session", "value": "abc", "path": "/", "secure": True})
 
@@ -763,7 +784,7 @@ def test_get_cookies_falls_back_to_all_browser_cookies(driver):
     driver.raw_tab.cookies = [cookie]
 
     assert driver.get_cookies()[0]["name"] == "NID_AUT"
-    assert driver.raw_tab.cdp_methods[-2:] == ["Network.getCookies", "Network.getAllCookies"]
+    assert driver.raw_tab.cdp_methods[-2:] == ["Network.getCookies", "Storage.getCookies"]
 
 
 def test_driver_screenshot_api(driver):
@@ -840,6 +861,33 @@ def test_element_submit_scroll_and_shadow_root():
     element.scroll_into_view()
 
     assert element.shadow_root.find_element(By.TAG_NAME, "button").text == "shadow child"
+
+
+def test_shadow_root_xpath_lookup():
+    raw_child = FakeElement("shadow child")
+
+    class FakeShadowRoot:
+        def __init__(self):
+            self.marked = {}
+
+        def query_selector_all(self, selector):
+            token = selector.split('"')[1]
+            return self.marked.get(token, [])
+
+        def apply(self, script, xpath_or_token, token=None, **_kwargs):
+            if "evaluate(" in script:
+                self.marked[token] = [raw_child]
+            else:
+                self.marked.pop(xpath_or_token, None)
+            return True
+
+    raw = FakeElement()
+    raw.shadow_roots = [FakeShadowRoot()]
+    element = WebElement(raw, ImmediateRunner())
+
+    found = element.shadow_root.find_element(By.XPATH, ".//button")
+
+    assert found.raw is raw_child
 
 
 def test_element_touch_scroll_into_view(driver):
@@ -1055,8 +1103,8 @@ def test_element_actions(driver):
     element.click()
     element.clear()
 
-    assert raw.keys == "ab"
-    assert len(driver.raw_tab.sent) == 2
+    assert len([request for request in driver.raw_tab.cdp_requests if request["method"] == "Input.dispatchKeyEvent"]) == 4
+    assert len(driver.raw_tab.sent) == 6
     assert raw.cleared is True
 
 
@@ -1366,8 +1414,18 @@ def test_element_send_keys_dispatches_special_keys(driver):
     element.send_keys("a", Keys.ENTER, "b")
 
     assert raw.focused is True
-    assert raw.keys == "ab"
-    assert len(driver.raw_tab.sent) == 2
+    assert len([request for request in driver.raw_tab.cdp_requests if request["method"] == "Input.dispatchKeyEvent"]) == 6
+
+
+def test_element_send_keys_js_is_explicit_and_dispatches_script(driver):
+    raw = FakeElement()
+    element = WebElement(raw, driver._runner, driver)
+
+    element.send_keys_js("a", "b")
+
+    assert driver.raw_tab.script_commands
+    assert "InputEvent" in driver.raw_tab.script_commands[-1]["params"]["functionDeclaration"]
+    assert not [request for request in driver.raw_tab.cdp_requests if request["method"] == "Input.dispatchKeyEvent"]
 
 
 def test_action_chains_key_down_and_key_up(driver):

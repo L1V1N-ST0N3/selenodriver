@@ -6,7 +6,7 @@ from typing import Any, Iterable
 
 from .by import By, locator_to_css
 from .exceptions import NoSuchElementException, TimeoutException
-from .keys import dispatch_key_press, is_special_key, split_key_sequence
+from .keys import dispatch_key_press, dispatch_text, is_special_key, split_key_sequence
 
 
 class WebElement:
@@ -77,14 +77,44 @@ class WebElement:
 
     def send_keys(self, *value: object) -> None:
         self._wait_until_ready_for_action()
+        focus = getattr(self._raw, "focus", None)
+        if focus is not None:
+            self._runner.run(focus())
         for chunk in split_key_sequence(*value):
             if is_special_key(chunk) and self._driver is not None:
-                focus = getattr(self._raw, "focus", None)
-                if focus is not None:
-                    self._runner.run(focus())
                 dispatch_key_press(self._driver.raw_tab, self._runner, chunk)
+            elif self._driver is not None:
+                dispatch_text(self._driver.raw_tab, self._runner, chunk)
             else:
                 self._runner.run(self._raw.send_keys(chunk))
+
+    def send_keys_js(self, *value: object) -> None:
+        """Append text through JavaScript; use send_keys() for real keyboard input."""
+        self._wait_until_ready_for_action()
+        chunks = list(split_key_sequence(*value))
+        text = "".join(chunk for chunk in chunks if not is_special_key(chunk))
+        if self._driver is not None:
+            self._driver.execute_script(
+                """
+                const el = arguments[0];
+                const text = String(arguments[1]);
+                if (el.isContentEditable) {
+                    el.textContent += text;
+                } else {
+                    const setter = Object.getOwnPropertyDescriptor(
+                        Object.getPrototypeOf(el), 'value'
+                    )?.set;
+                    if (setter) setter.call(el, String(el.value || '') + text);
+                    else el.value = String(el.value || '') + text;
+                }
+                el.dispatchEvent(new InputEvent('input', {bubbles: true, inputType: 'insertText', data: text}));
+                el.dispatchEvent(new Event('change', {bubbles: true}));
+                """,
+                self,
+                text,
+            )
+            return
+        self._runner.run(self._raw.send_keys(text))
 
     def clear(self) -> None:
         clear_input = getattr(self._raw, "clear_input", None)

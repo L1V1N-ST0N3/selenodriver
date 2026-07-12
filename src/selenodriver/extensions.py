@@ -18,3 +18,9 @@ class SelenoDriverExtension(Protocol):
 
     def before_quit(self, driver: Any) -> None:
         ...
+
+    def on_new_tab(self, driver: Any, tab: Any, handle: str) -> None:
+        ...
+
+    def install(self, driver: Any) -> None:
+        ...

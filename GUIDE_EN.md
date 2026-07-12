@@ -8,7 +8,7 @@
 python -m pip install selenodriver
 ```
 
-Version 0.1.2 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.1.3 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
 
 ## Quick Start
 
@@ -107,6 +107,14 @@ Serializable CDP `RemoteObject` values are normalized to Python values. JavaScri
 
 Since version 0.1.2, scripts with arguments use the CDP `objectId` for `globalThis` as their execution context. Element and global object handles share a per-execution object group that is released after both successful and failed calls. Object resolution and JavaScript execution failures raise `SelenoDriverException`.
 
+Shadow roots support both CSS selectors and XPath:
+
+```python
+shadow = host.shadow_root
+button = shadow.find_element(By.XPATH, ".//button[@type='submit']")
+items = shadow.find_elements(By.XPATH, ".//li")
+```
+
 ## ActionChains and Keys
 
 ```python
@@ -118,6 +126,13 @@ ActionChains(driver).key_down(Keys.CONTROL).send_keys("v").key_up(Keys.CONTROL).
 ```
 
 Modifier combinations are sent through CDP key events. This allows combinations such as Ctrl+V to behave as keyboard input instead of appending the literal character with JavaScript.
+
+Plain text from `WebElement.send_keys()` and `ActionChains.send_keys()` is also sent through CDP `Input.dispatchKeyEvent` by default. The same API works for desktop and mobile emulation. Use `send_keys_js()` only when direct JavaScript value mutation is explicitly required.
+
+```python
+element.send_keys("abc")       # default: real CDP keyboard input
+element.send_keys_js("abc")    # explicit JavaScript value mutation
+```
 
 Mouse, touch, offset clicks, drag operations, long press, key down/up, pauses, and element-focused input are available. This is not a complete W3C Actions implementation.
 
@@ -262,4 +277,9 @@ python -m pip install pytest
 pytest
 ```
 
-The unit suite uses fake nodriver objects. Real-browser tests are marked as smoke tests and may require a local Chrome installation.
+The unit suite uses fake nodriver objects. Opt-in real-browser smoke tests require a local Chrome installation:
+
+```powershell
+$env:SELENODRIVER_RUN_SMOKE = "1"
+pytest -m smoke
+```

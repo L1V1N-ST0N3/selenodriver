@@ -14,6 +14,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [버전과 의존성 / Version and Dependencies](#버전과-의존성--version-and-dependencies)
 - [0.1.1 업데이트 내역 / Release Notes](#011-업데이트-내역--release-notes)
 - [0.1.2 업데이트 내역 / Release Notes](#012-업데이트-내역--release-notes)
+- [0.1.3 업데이트 내역 / Release Notes](#013-업데이트-내역--release-notes)
 - [빠른 시작 / Quick Start](#빠른-시작--quick-start)
 - [클릭과 입력 방식 / Click and Input Modes](#클릭과-입력-방식--click-and-input-modes)
 - [좌표 클릭 / Offset and Randomized Clicks](#좌표-클릭--랜덤-위치-클릭--offset-and-randomized-clicks)
@@ -47,7 +48,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.1.2
+selenodriver 0.1.3
 ```
 
 실행 요구사항 / Runtime requirements:
@@ -86,6 +87,16 @@ Version `0.1.1` improves Selenium compatibility and fixes browser-state issues f
 - **`execute_script(script, *args)` 수정:** `Runtime.callFunctionOn` 호출 시 `globalThis`의 `objectId`를 넘겨 `Either objectId or executionContextId must be specified` 오류를 제거했습니다. / Provides the `globalThis` `objectId` to `Runtime.callFunctionOn`, resolving the missing objectId/context protocol error when script arguments are used.
 - **CDP object 수명 관리 / CDP object lifecycle:** script 실행마다 전용 object group을 사용하고 성공·실패 여부와 관계없이 해제하여 remote object handle 누적을 방지합니다. / Uses and always releases a per-execution object group to prevent remote object handles from accumulating.
 - **오류 전달 / Error propagation:** element 및 global object 해석 실패와 JavaScript 실행 오류를 `SelenoDriverException`으로 명확히 전달합니다. / Converts element/global object resolution failures and JavaScript execution errors into clear `SelenoDriverException` failures.
+
+## 0.1.3 업데이트 내역 / Release Notes
+
+- **기본 키 입력 / Default keyboard input:** `WebElement.send_keys()`와 `ActionChains.send_keys()`의 일반 문자열이 JavaScript value 조작이 아닌 CDP `Input.dispatchKeyEvent`로 전달됩니다. / Plain text now uses CDP keyboard events instead of JavaScript value mutation.
+- **명시적 JS 입력 / Explicit JavaScript input:** JavaScript 방식이 필요한 경우 `WebElement.send_keys_js()`를 사용할 수 있습니다. / `WebElement.send_keys_js()` is available when direct JavaScript value mutation is required.
+- **모바일·PC 공통 입력 / Shared desktop and mobile input:** 기본 입력 API가 desktop과 mobile emulation에서 같은 CDP 경로를 사용합니다. / The default input API uses the same CDP path for desktop and mobile emulation.
+- **Shadow DOM XPath:** `ShadowRoot.find_element(s)(By.XPATH, ...)`를 지원합니다. / Adds XPath lookup inside shadow roots.
+- **CDP wrapper 확장 / CDP wrapper expansion:** Network UA/header와 Emulation 명령을 `execute_cdp_cmd()`에서 지원합니다. / Adds common Network and Emulation commands to `execute_cdp_cmd()`.
+- **쿠키 fallback 개선 / Cookie fallback:** deprecated Network 전체 쿠키 명령 대신 Storage domain fallback을 사용합니다. / Uses the Storage domain for the browser-wide cookie fallback.
+- **테스트·CI / Tests and CI:** 실제 브라우저 smoke test, Python matrix CI, 공개 `__version__`을 추가했습니다. / Adds opt-in browser smoke tests, Python matrix CI, and a public `__version__`.
 
 ## 빠른 시작 / Quick Start
 
@@ -253,6 +264,7 @@ Implemented:
 - element actions/properties: `click`, `mouse_click`, `touch_click`, `js_click`, `submit`, `scroll_into_view`, `shadow_root`, `send_keys`, `clear`, `text`, `tag_name`, `get_attribute`, `get_dom_attribute`, `get_property`, `value_of_css_property`, `is_selected`, `size`, `location`, `rect`
 - browser helpers: `get`, `back`, `forward`, `refresh`, extension hooks, init scripts, `auto_wait`, `implicitly_wait`, `set_script_timeout`, `timeouts`, `session_id`, `capabilities`, window size/position, legacy find aliases, `find_element`, `find_element_location`, `find_element_absolute_location`, `find_elements`, `execute_script`, `send_cdp`, `execute_cdp_cmd`, `scroll_to`, `scroll_by`, `touch_scroll_by`, `touch_scroll_to`, `page_source`, `title`, `current_url`, `current_window_handle`, `window_handles`, `switch_to.window`, `switch_to.frame`, `switch_to.active_element`, cookies, `save_screenshot`, `close`, `quit`
 - action chains: `click`, `touch_click`, `double_click`, `double_tap`, `context_click`, `move_to_element`, `move_to_element_with_offset`, `touch_move_to_element_with_offset`, `move_by_offset`, `drag_and_drop`, `drag_and_drop_by_offset`, `touch_drag_and_drop`, `touch_drag_by_offset`, `click_and_hold`, `long_press`, `release`, `send_keys`, `send_keys_to_element`, `key_down`, `key_up`, `pause`
+- input modes: `WebElement.send_keys()` uses CDP keyboard events by default; `WebElement.send_keys_js()` is available when JavaScript value mutation is explicitly required. The same CDP path works with desktop and mobile emulation.
 - expected conditions: `presence_of_element_located`, `visibility_of_element_located`, `element_to_be_clickable`, `invisibility_of_element_located`, `alert_is_present`, `title_is`, `title_contains`, `url_contains`, `url_to_be`, `url_matches`, text checks, and window count checks
 
 더 자세한 사용법은 [한국어 가이드](https://github.com/L1V1N-ST0N3/selenodriver/blob/master/GUIDE.md)와 [English guide](https://github.com/L1V1N-ST0N3/selenodriver/blob/master/GUIDE_EN.md)에 정리되어 있습니다.

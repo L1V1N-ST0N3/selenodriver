@@ -173,6 +173,17 @@ def dispatch_key(tab: Any, runner: Any, value: str, type_: str = "keyDown", modi
     runner.run(tab.send(event))
 
 
+def dispatch_text(tab: Any, runner: Any, value: str, modifiers: int = 0) -> None:
+    """Send text as real CDP keyboard events, one logical character at a time."""
+    for char in str(value):
+        if char == "\n":
+            dispatch_key_press(tab, runner, Keys.ENTER, modifiers)
+        elif char == "\r":
+            dispatch_key_press(tab, runner, Keys.RETURN, modifiers)
+        else:
+            dispatch_key_press(tab, runner, char, modifiers)
+
+
 def dispatch_key_press(tab: Any, runner: Any, value: str, modifiers: int = 0) -> None:
     dispatch_key(tab, runner, value, "keyDown", modifiers)
     dispatch_key(tab, runner, value, "keyUp", modifiers)
