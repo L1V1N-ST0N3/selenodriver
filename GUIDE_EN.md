@@ -137,6 +137,32 @@ element.send_keys("한글", mode="jamo")  # 2-beolsik jamo key events
 element.send_keys("abc", delay=0.05)     # delay between events
 ```
 
+### Input mode details
+
+```python
+element.send_keys("hello 한글 😀", mode="auto")
+element.send_keys("hello", mode="key")
+element.send_keys("한글 😀", mode="text")
+element.send_keys("한글", mode="jamo", focus=True)
+
+ActionChains(driver).send_keys("한글 😀", mode="auto", delay=0.05).perform()
+ActionChains(driver).send_keys_to_element(
+    element, "한글", mode="jamo", delay=0.05
+).perform()
+```
+
+`auto` uses CDP key events for ASCII and `Input.insertText` for Hangul and emoji. `key` attempts key events for ASCII/Hangul and uses text insertion for emoji. `text` sends completed text through `Input.insertText`, while `jamo` converts Hangul to 2-beolsik key sequences.
+
+With `jamo`, `focus=True` clicks the element before checking Windows IME state. On non-Windows systems or when IME detection fails, the complete string falls back to `Input.insertText`. Compound emoji are handled as graphemes in every mode.
+
+Check the package version:
+
+```python
+import selenodriver
+
+print(selenodriver.__version__)
+```
+
 Input modes:
 
 - `auto`: uses `Input.insertText` for Hangul/Unicode and key events for other text

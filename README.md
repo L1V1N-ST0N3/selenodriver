@@ -51,6 +51,14 @@ English summary:
 selenodriver 0.1.3
 ```
 
+The version is also available from Python:
+
+```python
+import selenodriver
+
+print(selenodriver.__version__)
+```
+
 실행 요구사항 / Runtime requirements:
 
 ```text

@@ -1,10 +1,6 @@
 from .action_chains import ActionChains
-from importlib.metadata import PackageNotFoundError, version
 
-try:
-    __version__ = version("selenodriver")
-except PackageNotFoundError:
-    __version__ = "0.1.2"
+__version__ = "0.1.3"
 from .alert import Alert
 from .by import By
 from .driver import Chrome

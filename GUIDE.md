@@ -546,6 +546,32 @@ element.send_keys("한글", mode="jamo")  # 두벌식 자모 키 이벤트
 element.send_keys("abc", delay=0.05)     # 이벤트 사이 지연
 ```
 
+### 입력 mode 상세
+
+```python
+element.send_keys("hello 한글 😀", mode="auto")
+element.send_keys("hello", mode="key")
+element.send_keys("한글 😀", mode="text")
+element.send_keys("한글", mode="jamo", focus=True)
+
+ActionChains(driver).send_keys("한글 😀", mode="auto", delay=0.05).perform()
+ActionChains(driver).send_keys_to_element(
+    element, "한글", mode="jamo", delay=0.05
+).perform()
+```
+
+`auto`는 ASCII를 CDP key event로, 한글과 emoji를 `Input.insertText`로 처리합니다. `key`는 ASCII/한글 key event를 시도하고 emoji는 text 삽입으로 처리합니다. `text`는 완성 문자열 전체를 `Input.insertText`로 처리하며, `jamo`는 한글을 두벌식 키 시퀀스로 변환합니다.
+
+`jamo` mode의 `focus=True`는 element를 실제 mouse click으로 focus한 뒤 Windows IME 상태를 확인합니다. Windows가 아니거나 IME 감지가 실패하면 전체 문자열을 `Input.insertText`로 fallback합니다. 복합 emoji는 모든 mode에서 grapheme 단위로 처리됩니다.
+
+패키지 버전 확인:
+
+```python
+import selenodriver
+
+print(selenodriver.__version__)
+```
+
 입력 mode는 다음과 같습니다.
 
 - `auto`: 한글/Unicode 텍스트는 `Input.insertText`, 나머지는 key event
