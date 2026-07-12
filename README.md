@@ -92,6 +92,8 @@ Version `0.1.1` improves Selenium compatibility and fixes browser-state issues f
 
 - **기본 키 입력 / Default keyboard input:** `WebElement.send_keys()`와 `ActionChains.send_keys()`의 일반 문자열이 JavaScript value 조작이 아닌 CDP `Input.dispatchKeyEvent`로 전달됩니다. / Plain text now uses CDP keyboard events instead of JavaScript value mutation.
 - **명시적 JS 입력 / Explicit JavaScript input:** JavaScript 방식이 필요한 경우 `WebElement.send_keys_js()`를 사용할 수 있습니다. / `WebElement.send_keys_js()` is available when direct JavaScript value mutation is required.
+- **입력 mode와 delay / Input modes and delay:** `auto`, `key`, `text`, `jamo` mode와 문자 사이 `delay` 옵션을 제공합니다. / Adds `auto`, `key`, `text`, and `jamo` modes plus configurable inter-character delay.
+- **한글 입력 / Hangul input:** 외부 `jamo` 패키지 없이 Unicode 음절 분해와 두벌식 변환을 지원합니다. / Supports Unicode Hangul decomposition and 2-beolsik conversion without importing the external `jamo` package.
 - **모바일·PC 공통 입력 / Shared desktop and mobile input:** 기본 입력 API가 desktop과 mobile emulation에서 같은 CDP 경로를 사용합니다. / The default input API uses the same CDP path for desktop and mobile emulation.
 - **Shadow DOM XPath:** `ShadowRoot.find_element(s)(By.XPATH, ...)`를 지원합니다. / Adds XPath lookup inside shadow roots.
 - **CDP wrapper 확장 / CDP wrapper expansion:** Network UA/header와 Emulation 명령을 `execute_cdp_cmd()`에서 지원합니다. / Adds common Network and Emulation commands to `execute_cdp_cmd()`.

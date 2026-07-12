@@ -173,15 +173,32 @@ def dispatch_key(tab: Any, runner: Any, value: str, type_: str = "keyDown", modi
     runner.run(tab.send(event))
 
 
-def dispatch_text(tab: Any, runner: Any, value: str, modifiers: int = 0) -> None:
+def dispatch_text(tab: Any, runner: Any, value: str, modifiers: int = 0, delay: float = 0.0) -> None:
     """Send text as real CDP keyboard events, one logical character at a time."""
-    for char in str(value):
+    import time
+
+    chars = list(str(value))
+    for index, char in enumerate(chars):
         if char == "\n":
             dispatch_key_press(tab, runner, Keys.ENTER, modifiers)
         elif char == "\r":
             dispatch_key_press(tab, runner, Keys.RETURN, modifiers)
         else:
             dispatch_key_press(tab, runner, char, modifiers)
+        if delay > 0 and index < len(chars) - 1:
+            time.sleep(delay)
+
+
+def dispatch_insert_text(tab: Any, runner: Any, value: str, delay: float = 0.0) -> None:
+    """Insert completed text through CDP, which is suitable for IME text."""
+    import time
+    from nodriver import cdp
+
+    chars = list(str(value))
+    for index, char in enumerate(chars):
+        runner.run(tab.send(cdp.input_.insert_text(char)))
+        if delay > 0 and index < len(chars) - 1:
+            time.sleep(delay)
 
 
 def dispatch_key_press(tab: Any, runner: Any, value: str, modifiers: int = 0) -> None:

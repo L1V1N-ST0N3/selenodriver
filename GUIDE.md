@@ -541,7 +541,19 @@ ActionChains(driver).key_down(Keys.CONTROL).send_keys("v").key_up(Keys.CONTROL).
 ```python
 element.send_keys("abc")       # 기본값: 실제 CDP 키 입력
 element.send_keys_js("abc")    # 명시적 JS value 변경
+element.send_keys("한글", mode="auto")  # 한글은 Input.insertText
+element.send_keys("한글", mode="jamo")  # 두벌식 자모 키 이벤트
+element.send_keys("abc", delay=0.05)     # 이벤트 사이 지연
 ```
+
+입력 mode는 다음과 같습니다.
+
+- `auto`: 한글/Unicode 텍스트는 `Input.insertText`, 나머지는 key event
+- `key`: 모든 문자를 `keyDown`/`keyUp`으로 시도
+- `text`: 모든 값을 `Input.insertText`로 전달
+- `jamo`: 한글 음절을 자모로 분해한 뒤 원본 앱의 두벌식 영문 키 매핑으로 변환
+
+`jamo` mode는 운영체제 또는 브라우저 입력 상태가 한글 두벌식으로 설정되어 있을 때 사용하는 특수 경로입니다. 일반적인 웹 input 안정성은 `auto`가 더 높습니다. `ActionChains.send_keys()`와 `send_keys_to_element()`도 같은 mode와 `delay` 인자를 지원합니다.
 
 액션은 체인에 쌓이고, `perform()` 호출 시 순서대로 실행됩니다.
 

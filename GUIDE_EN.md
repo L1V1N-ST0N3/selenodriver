@@ -132,7 +132,19 @@ Plain text from `WebElement.send_keys()` and `ActionChains.send_keys()` is also 
 ```python
 element.send_keys("abc")       # default: real CDP keyboard input
 element.send_keys_js("abc")    # explicit JavaScript value mutation
+element.send_keys("한글", mode="auto")  # Korean uses Input.insertText
+element.send_keys("한글", mode="jamo")  # 2-beolsik jamo key events
+element.send_keys("abc", delay=0.05)     # delay between events
 ```
+
+Input modes:
+
+- `auto`: uses `Input.insertText` for Hangul/Unicode and key events for other text
+- `key`: attempts `keyDown`/`keyUp` for every character
+- `text`: sends all values through `Input.insertText`
+- `jamo`: decomposes Hangul syllables and converts them to the original app's 2-beolsik Latin key mapping
+
+`jamo` mode requires the operating system or browser input state to be configured for Korean 2-beolsik input. For general web input reliability, prefer `auto`. `ActionChains.send_keys()` and `send_keys_to_element()` support the same mode and `delay` arguments.
 
 Mouse, touch, offset clicks, drag operations, long press, key down/up, pauses, and element-focused input are available. This is not a complete W3C Actions implementation.
 

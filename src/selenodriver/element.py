@@ -6,7 +6,8 @@ from typing import Any, Iterable
 
 from .by import By, locator_to_css
 from .exceptions import NoSuchElementException, TimeoutException
-from .keys import dispatch_key_press, dispatch_text, is_special_key, split_key_sequence
+from .hangul import is_hangul_text, split_hangul_runs, to_dubeolsik
+from .keys import dispatch_insert_text, dispatch_key_press, dispatch_text, is_special_key, split_key_sequence
 
 
 class WebElement:
@@ -75,7 +76,9 @@ class WebElement:
             raise RuntimeError("Element has no driver or tab for CDP command dispatch")
         return self._runner.run(tab.send(command))
 
-    def send_keys(self, *value: object) -> None:
+    def send_keys(self, *value: object, delay: float = 0.0, mode: str = "auto") -> None:
+        if mode not in {"auto", "key", "text", "jamo"}:
+            raise ValueError("mode must be 'auto', 'key', 'text', or 'jamo'")
         self._wait_until_ready_for_action()
         focus = getattr(self._raw, "focus", None)
         if focus is not None:
@@ -84,9 +87,25 @@ class WebElement:
             if is_special_key(chunk) and self._driver is not None:
                 dispatch_key_press(self._driver.raw_tab, self._runner, chunk)
             elif self._driver is not None:
-                dispatch_text(self._driver.raw_tab, self._runner, chunk)
+                self._send_text_chunk(chunk, delay=delay, mode=mode)
             else:
                 self._runner.run(self._raw.send_keys(chunk))
+
+    def _send_text_chunk(self, chunk: str, *, delay: float, mode: str) -> None:
+        if mode == "key":
+            dispatch_text(self._driver.raw_tab, self._runner, chunk, delay=delay)
+            return
+        if mode == "jamo":
+            dispatch_text(self._driver.raw_tab, self._runner, to_dubeolsik(chunk), delay=delay)
+            return
+        if mode == "text":
+            dispatch_insert_text(self._driver.raw_tab, self._runner, chunk, delay=delay)
+            return
+        for is_hangul, part in split_hangul_runs(chunk):
+            if is_hangul:
+                dispatch_insert_text(self._driver.raw_tab, self._runner, part, delay=delay)
+            else:
+                dispatch_text(self._driver.raw_tab, self._runner, part, delay=delay)
 
     def send_keys_js(self, *value: object) -> None:
         """Append text through JavaScript; use send_keys() for real keyboard input."""

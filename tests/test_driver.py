@@ -1428,6 +1428,37 @@ def test_element_send_keys_js_is_explicit_and_dispatches_script(driver):
     assert not [request for request in driver.raw_tab.cdp_requests if request["method"] == "Input.dispatchKeyEvent"]
 
 
+def test_hangul_decomposition_and_dubeolsik_conversion():
+    from selenodriver.hangul import decompose, to_dubeolsik
+
+    assert decompose("한글") == "ㅎㅏㄴㄱㅡㄹ"
+    assert to_dubeolsik("한글") == "gksrmf"
+    assert decompose("괜찮아") == "ㄱㅗㅐㄴㅊㅏㄴㅎㅇㅏ"
+
+
+def test_element_send_keys_modes_support_hangul(driver):
+    raw = FakeElement()
+    element = WebElement(raw, driver._runner, driver)
+
+    element.send_keys("한글", mode="auto")
+    assert [request["method"] for request in driver.raw_tab.cdp_requests] == [
+        "Input.insertText", "Input.insertText",
+    ]
+
+    driver.raw_tab.cdp_requests.clear()
+    element.send_keys("한글", mode="jamo")
+    key_requests = [request for request in driver.raw_tab.cdp_requests if request["method"] == "Input.dispatchKeyEvent"]
+    assert [request["params"]["key"] for request in key_requests[::2]] == list("gksrmf")
+
+
+def test_action_chains_text_mode_uses_insert_text(driver):
+    ActionChains(driver).send_keys("한글", mode="text").perform()
+
+    assert [request["method"] for request in driver.raw_tab.cdp_requests] == [
+        "Input.insertText", "Input.insertText",
+    ]
+
+
 def test_action_chains_key_down_and_key_up(driver):
     ActionChains(driver).key_down(Keys.CONTROL).key_up(Keys.CONTROL).perform()
 

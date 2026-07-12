@@ -4,7 +4,8 @@ from collections.abc import Callable
 from typing import Any
 
 from .element import WebElement
-from .keys import Keys, dispatch_key, dispatch_key_press, dispatch_text, is_special_key, split_key_sequence
+from .hangul import split_hangul_runs, to_dubeolsik
+from .keys import Keys, dispatch_insert_text, dispatch_key, dispatch_key_press, dispatch_text, is_special_key, split_key_sequence
 
 
 _MODIFIER_BITS = {Keys.ALT: 1, Keys.CONTROL: 2, Keys.META: 4, Keys.COMMAND: 4, Keys.SHIFT: 8}
@@ -218,14 +219,16 @@ class ActionChains:
         self._actions.append(_action)
         return self
 
-    def send_keys(self, *keys_to_send: object) -> "ActionChains":
-        self._actions.append(lambda: self._send_keys(*keys_to_send))
+    def send_keys(self, *keys_to_send: object, delay: float = 0.0, mode: str = "auto") -> "ActionChains":
+        if mode not in {"auto", "key", "text", "jamo"}:
+            raise ValueError("mode must be 'auto', 'key', 'text', or 'jamo'")
+        self._actions.append(lambda: self._send_keys(*keys_to_send, delay=delay, mode=mode))
         return self
 
-    def send_keys_to_element(self, element: WebElement, *keys_to_send: object) -> "ActionChains":
+    def send_keys_to_element(self, element: WebElement, *keys_to_send: object, delay: float = 0.0, mode: str = "auto") -> "ActionChains":
         def _action() -> None:
             element._runner.run(element.raw.focus())
-            element.send_keys(*keys_to_send)
+            element.send_keys(*keys_to_send, delay=delay, mode=mode)
 
         self._actions.append(_action)
         return self
@@ -264,14 +267,25 @@ class ActionChains:
         self._actions.append(_action)
         return self
 
-    def _send_keys(self, *values: object) -> None:
+    def _send_keys(self, *values: object, delay: float = 0.0, mode: str = "auto") -> None:
         for chunk in split_key_sequence(*values):
             if is_special_key(chunk):
                 dispatch_key_press(self._driver.raw_tab, self._driver._runner, chunk, self._modifier_mask())
             elif self._modifiers:
-                dispatch_text(self._driver.raw_tab, self._driver._runner, chunk, self._modifier_mask())
+                dispatch_text(self._driver.raw_tab, self._driver._runner, chunk, self._modifier_mask(), delay)
             else:
-                dispatch_text(self._driver.raw_tab, self._driver._runner, chunk)
+                if mode == "key" or self._modifiers:
+                    dispatch_text(self._driver.raw_tab, self._driver._runner, chunk, delay=delay)
+                elif mode == "jamo":
+                    dispatch_text(self._driver.raw_tab, self._driver._runner, to_dubeolsik(chunk), delay=delay)
+                elif mode == "text":
+                    dispatch_insert_text(self._driver.raw_tab, self._driver._runner, chunk, delay=delay)
+                else:
+                    for is_hangul, part in split_hangul_runs(chunk):
+                        if is_hangul:
+                            dispatch_insert_text(self._driver.raw_tab, self._driver._runner, part, delay=delay)
+                        else:
+                            dispatch_text(self._driver.raw_tab, self._driver._runner, part, delay=delay)
 
     def _modifier_mask(self) -> int:
         return sum(_MODIFIER_BITS[value] for value in self._modifiers)
