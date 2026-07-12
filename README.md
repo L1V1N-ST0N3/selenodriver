@@ -12,6 +12,8 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 
 - [핵심 강점 / Key Features](#핵심-강점--key-features)
 - [버전과 의존성 / Version and Dependencies](#버전과-의존성--version-and-dependencies)
+- [0.1.1 업데이트 내역 / Release Notes](#011-업데이트-내역--release-notes)
+- [0.1.2 업데이트 내역 / Release Notes](#012-업데이트-내역--release-notes)
 - [빠른 시작 / Quick Start](#빠른-시작--quick-start)
 - [클릭과 입력 방식 / Click and Input Modes](#클릭과-입력-방식--click-and-input-modes)
 - [좌표 클릭 / Offset and Randomized Clicks](#좌표-클릭--랜덤-위치-클릭--offset-and-randomized-clicks)
@@ -45,7 +47,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.1.1
+selenodriver 0.1.2
 ```
 
 실행 요구사항 / Runtime requirements:
@@ -62,6 +64,28 @@ dependencies = [
   "nodriver>=0.39",
 ]
 ```
+
+## 0.1.1 업데이트 내역 / Release Notes
+
+`0.1.1`은 실사용 중 확인된 Selenium 호환 문제와 브라우저 상태 처리 문제를 보완한 릴리스입니다.
+
+Version `0.1.1` improves Selenium compatibility and fixes browser-state issues found in real-world usage.
+
+- **JavaScript 실행 / JavaScript execution:** `execute_script()`가 표현식과 Selenium식 top-level `return`을 모두 지원하며, CDP `RemoteObject`를 가능한 경우 Python 값으로 변환합니다. JavaScript 예외 정보는 `SelenoDriverException`으로 전달됩니다. / Supports both expressions and Selenium-style top-level `return`, normalizes CDP `RemoteObject` values, and raises `SelenoDriverException` for JavaScript exception details.
+- **쿠키 조회 / Cookie retrieval:** 현재 URL의 쿠키 조회가 실패하거나 빈 결과를 반환하면 브라우저 전체 쿠키 조회로 fallback합니다. / Falls back to browser-wide cookies when the current-URL lookup fails or returns no results.
+- **사용자 프로필 / User profiles:** `Options.add_argument("--user-data-dir=...")` 형식을 nodriver의 전용 `user_data_dir` 옵션으로 변환합니다. / Converts Selenium-style `--user-data-dir=...` arguments to nodriver's dedicated `user_data_dir` option.
+- **Alert 호환 / Alert compatibility:** alert가 없을 때 `NoAlertPresentException`을 발생시키며, `EC.alert_is_present()`는 대기 중 `False`를 반환합니다. / Raises `NoAlertPresentException` when no alert is open while `EC.alert_is_present()` safely returns `False`.
+- **CDP 호환 / CDP compatibility:** Selenium 이식 코드를 위한 `execute_cdp_cmd()` 래퍼를 추가했습니다. init script 추가와 제거를 지원하며, 기존 typed `send_cdp()` API도 그대로 유지됩니다. / Adds an `execute_cdp_cmd()` migration wrapper for adding and removing init scripts while retaining the typed `send_cdp()` API.
+- **키 조합 / Key combinations:** `ActionChains`가 modifier 상태를 CDP key event에 전달하여 Ctrl+V 같은 조합을 실제 키 입력으로 처리합니다. / Passes modifier state through CDP key events so combinations such as Ctrl+V behave as real keyboard input.
+- **페이지 로드 / Page loading:** `document.readyState` 결과 타입을 방어적으로 처리하여 CDP 객체 때문에 페이지 로드 대기가 실패하지 않도록 했습니다. / Defensively handles `document.readyState` result types to prevent CDP objects from breaking page-load waits.
+- **중첩 XPath / Scoped XPath:** `WebElement.find_element(s)(By.XPATH, ...)`를 추가하여 현재 element 기준 XPath 조회를 지원합니다. / Adds element-scoped XPath lookup through `WebElement.find_element(s)(By.XPATH, ...)`.
+- **문서 / Documentation:** 한국어 가이드를 갱신하고 별도의 영문 가이드를 추가했습니다. / Updates the Korean guide and adds a dedicated English guide.
+
+## 0.1.2 업데이트 내역 / Release Notes
+
+- **`execute_script(script, *args)` 수정:** `Runtime.callFunctionOn` 호출 시 `globalThis`의 `objectId`를 넘겨 `Either objectId or executionContextId must be specified` 오류를 제거했습니다. / Provides the `globalThis` `objectId` to `Runtime.callFunctionOn`, resolving the missing objectId/context protocol error when script arguments are used.
+- **CDP object 수명 관리 / CDP object lifecycle:** script 실행마다 전용 object group을 사용하고 성공·실패 여부와 관계없이 해제하여 remote object handle 누적을 방지합니다. / Uses and always releases a per-execution object group to prevent remote object handles from accumulating.
+- **오류 전달 / Error propagation:** element 및 global object 해석 실패와 JavaScript 실행 오류를 `SelenoDriverException`으로 명확히 전달합니다. / Converts element/global object resolution failures and JavaScript execution errors into clear `SelenoDriverException` failures.
 
 ## 빠른 시작 / Quick Start
 

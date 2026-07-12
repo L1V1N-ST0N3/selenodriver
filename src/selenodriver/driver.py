@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import re
 import time
+import uuid
 from typing import Any
 
 from .alert import Alert
@@ -463,33 +464,68 @@ class Chrome:
     def _execute_script_with_args(self, script: str, *args: Any) -> Any:
         from nodriver import cdp
 
-        call_args = []
-        for arg in args:
-            if isinstance(arg, WebElement):
-                backend_node_id = arg.raw.backend_node_id
-                if not hasattr(backend_node_id, "to_json"):
-                    backend_node_id = cdp.dom.BackendNodeId(backend_node_id)
-                remote_object = self._runner.run(
-                    self._tab.send(cdp.dom.resolve_node(backend_node_id=backend_node_id))
-                )
-                call_args.append(cdp.runtime.CallArgument(object_id=remote_object.object_id))
-            else:
-                call_args.append(cdp.runtime.CallArgument(value=arg))
-        function_declaration = f"function() {{ {script} }}"
-        remote_object, errors = self._runner.run(
-            self._tab.send(
-                cdp.runtime.call_function_on(
-                    function_declaration,
-                    arguments=call_args,
-                    return_by_value=True,
-                    user_gesture=True,
-                    await_promise=True,
+        object_group = f"selenodriver-execute-script-{uuid.uuid4().hex}"
+        try:
+            call_args = []
+            for arg in args:
+                if isinstance(arg, WebElement):
+                    backend_node_id = arg.raw.backend_node_id
+                    if not hasattr(backend_node_id, "to_json"):
+                        backend_node_id = cdp.dom.BackendNodeId(backend_node_id)
+                    remote_object = self._runner.run(
+                        self._tab.send(
+                            cdp.dom.resolve_node(
+                                backend_node_id=backend_node_id,
+                                object_group=object_group,
+                            )
+                        )
+                    )
+                    object_id = getattr(remote_object, "object_id", None)
+                    if object_id is None:
+                        raise SelenoDriverException("Failed to resolve WebElement objectId for execute_script")
+                    call_args.append(cdp.runtime.CallArgument(object_id=object_id))
+                else:
+                    call_args.append(cdp.runtime.CallArgument(value=arg))
+
+            global_remote, global_errors = self._runner.run(
+                self._tab.send(
+                    cdp.runtime.evaluate(
+                        expression="globalThis",
+                        object_group=object_group,
+                        return_by_value=False,
+                        user_gesture=True,
+                        allow_unsafe_eval_blocked_by_csp=True,
+                    )
                 )
             )
-        )
-        if errors:
-            return errors
-        return getattr(remote_object, "value", None)
+            if global_errors:
+                raise SelenoDriverException(str(global_errors))
+            global_object_id = getattr(global_remote, "object_id", None)
+            if global_object_id is None:
+                raise SelenoDriverException("Failed to resolve globalThis objectId for execute_script")
+
+            function_declaration = f"function() {{ {script}\n }}"
+            remote_object, errors = self._runner.run(
+                self._tab.send(
+                    cdp.runtime.call_function_on(
+                        function_declaration,
+                        object_id=global_object_id,
+                        arguments=call_args,
+                        return_by_value=True,
+                        user_gesture=True,
+                        await_promise=True,
+                        object_group=object_group,
+                    )
+                )
+            )
+            if errors:
+                raise SelenoDriverException(str(errors))
+            return self._normalize_script_result(getattr(remote_object, "value", None))
+        finally:
+            try:
+                self._runner.run(self._tab.send(cdp.runtime.release_object_group(object_group)))
+            except Exception:
+                pass
 
     def save_screenshot(self, filename: str) -> bool:
         self._runner.run(self._tab.save_screenshot(filename))

@@ -18,6 +18,7 @@ from selenodriver import (
     NoSuchFrameException,
     NoSuchWindowException,
     Options,
+    SelenoDriverException,
     TimeoutException,
     WebDriverWait,
     WebElement,
@@ -176,6 +177,9 @@ class FakeTab:
         self.scroll_position = {"x": 0, "y": 0}
         self.cdp_methods = []
         self.cdp_requests = []
+        self.global_object_id = "global-1"
+        self.runtime_evaluate_errors = None
+        self.runtime_call_errors = None
 
     def query_selector_all(self, selector):
         if selector in self.delayed_queries:
@@ -232,9 +236,26 @@ class FakeTab:
                     from nodriver import cdp
 
                     return type("RemoteObject", (), {"object_id": cdp.runtime.RemoteObjectId("remote-1")})()
+                if method == "Runtime.evaluate":
+                    from nodriver import cdp
+
+                    object_id = (
+                        cdp.runtime.RemoteObjectId(self.global_object_id)
+                        if self.global_object_id is not None
+                        else None
+                    )
+                    return (
+                        type("RemoteObject", (), {"object_id": object_id})(),
+                        self.runtime_evaluate_errors,
+                    )
                 if method == "Runtime.callFunctionOn":
                     self.script_commands.append(request)
-                    return (type("RemoteObject", (), {"value": "script-result"})(), None)
+                    return (
+                        type("RemoteObject", (), {"value": "script-result"})(),
+                        self.runtime_call_errors,
+                    )
+                if method == "Runtime.releaseObjectGroup":
+                    return None
                 if method == "Network.getCookies":
                     return self.cookies if self.url_cookies is None else self.url_cookies
                 if method == "Network.getAllCookies":
@@ -628,6 +649,43 @@ def test_execute_script_with_element_and_value_args(driver):
 
     assert result == "script-result"
     assert driver.raw_tab.script_commands
+    evaluate_request = next(
+        request for request in driver.raw_tab.cdp_requests if request["method"] == "Runtime.evaluate"
+    )
+    call_request = driver.raw_tab.script_commands[0]
+    release_request = next(
+        request for request in driver.raw_tab.cdp_requests if request["method"] == "Runtime.releaseObjectGroup"
+    )
+    assert call_request["params"]["objectId"] == "global-1"
+    assert evaluate_request["params"]["objectGroup"] == call_request["params"]["objectGroup"]
+    assert release_request["params"]["objectGroup"] == call_request["params"]["objectGroup"]
+
+
+def test_execute_script_with_args_raises_for_global_evaluation_error(driver):
+    driver.raw_tab.runtime_evaluate_errors = "global evaluation failed"
+
+    with pytest.raises(SelenoDriverException, match="global evaluation failed"):
+        driver.execute_script("return arguments[0]", "value")
+
+    assert driver.raw_tab.cdp_methods[-1] == "Runtime.releaseObjectGroup"
+
+
+def test_execute_script_with_args_raises_without_global_object_id(driver):
+    driver.raw_tab.global_object_id = None
+
+    with pytest.raises(SelenoDriverException, match="globalThis objectId"):
+        driver.execute_script("return arguments[0]", "value")
+
+    assert driver.raw_tab.cdp_methods[-1] == "Runtime.releaseObjectGroup"
+
+
+def test_execute_script_with_args_raises_for_script_error(driver):
+    driver.raw_tab.runtime_call_errors = "script failed"
+
+    with pytest.raises(SelenoDriverException, match="script failed"):
+        driver.execute_script("return arguments[0]", "value")
+
+    assert driver.raw_tab.cdp_methods[-1] == "Runtime.releaseObjectGroup"
 
 
 def test_execute_script_supports_return_and_expression_styles(driver):

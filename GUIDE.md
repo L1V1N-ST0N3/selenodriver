@@ -61,7 +61,7 @@ from selenodriver.webdriver.support import expected_conditions as EC
 
 ## 버전과 의존성
 
-현재 공개 기준 버전은 `0.1.1`입니다.
+현재 패키지 버전은 `0.1.2`입니다.
 
 패키지 요구사항:
 
@@ -74,7 +74,7 @@ nodriver >= 0.39
 
 ```toml
 [project]
-version = "0.1.1"
+version = "0.1.2"
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",
@@ -278,6 +278,8 @@ Selenium식 `arguments[0]` element 전달도 지원합니다.
 driver.execute_script("arguments[0].click();", element)
 text = driver.execute_script("return arguments[0].textContent;", element)
 ```
+
+`0.1.2`부터 argument가 있는 script는 `globalThis`의 CDP `objectId`를 실행 context로 사용합니다. element와 global object handle은 실행별 object group으로 관리되어 성공하거나 예외가 발생한 뒤에도 정리됩니다. CDP object 해석 또는 JavaScript 실행이 실패하면 `SelenoDriverException`이 발생합니다.
 
 ## Locator
 

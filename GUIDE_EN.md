@@ -8,7 +8,7 @@
 python -m pip install selenodriver
 ```
 
-Version 0.1.1 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.1.2 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
 
 ## Quick Start
 
@@ -104,6 +104,8 @@ text = driver.execute_script("return arguments[0].textContent", element)
 ```
 
 Serializable CDP `RemoteObject` values are normalized to Python values. JavaScript exception details raise `SelenoDriverException`.
+
+Since version 0.1.2, scripts with arguments use the CDP `objectId` for `globalThis` as their execution context. Element and global object handles share a per-execution object group that is released after both successful and failed calls. Object resolution and JavaScript execution failures raise `SelenoDriverException`.
 
 ## ActionChains and Keys
 
