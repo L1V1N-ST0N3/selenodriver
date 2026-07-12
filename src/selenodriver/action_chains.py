@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 from .element import WebElement
-from .hangul import split_hangul_runs, to_dubeolsik
+from .hangul import split_input_runs, to_dubeolsik
 from .keys import Keys, dispatch_insert_text, dispatch_key, dispatch_key_press, dispatch_text, is_special_key, split_key_sequence
 
 
@@ -274,18 +274,32 @@ class ActionChains:
             elif self._modifiers:
                 dispatch_text(self._driver.raw_tab, self._driver._runner, chunk, self._modifier_mask(), delay)
             else:
-                if mode == "key" or self._modifiers:
-                    dispatch_text(self._driver.raw_tab, self._driver._runner, chunk, delay=delay)
-                elif mode == "jamo":
-                    dispatch_text(self._driver.raw_tab, self._driver._runner, to_dubeolsik(chunk), delay=delay)
-                elif mode == "text":
-                    dispatch_insert_text(self._driver.raw_tab, self._driver._runner, chunk, delay=delay)
-                else:
-                    for is_hangul, part in split_hangul_runs(chunk):
-                        if is_hangul:
+                if mode == "key" and not self._modifiers:
+                    for kind, part in split_input_runs(chunk):
+                        if kind == "text":
                             dispatch_insert_text(self._driver.raw_tab, self._driver._runner, part, delay=delay)
                         else:
                             dispatch_text(self._driver.raw_tab, self._driver._runner, part, delay=delay)
+                elif mode == "key" or self._modifiers:
+                    dispatch_text(self._driver.raw_tab, self._driver._runner, chunk, delay=delay)
+                elif mode == "jamo":
+                    for kind, part in split_input_runs(chunk):
+                        if kind == "hangul":
+                            dispatch_text(self._driver.raw_tab, self._driver._runner, to_dubeolsik(part), delay=delay)
+                        elif kind == "key":
+                            dispatch_text(self._driver.raw_tab, self._driver._runner, part, delay=delay)
+                        else:
+                            dispatch_insert_text(self._driver.raw_tab, self._driver._runner, part, delay=delay)
+                elif mode == "text":
+                    dispatch_insert_text(self._driver.raw_tab, self._driver._runner, chunk, delay=delay)
+                else:
+                    for kind, part in split_input_runs(chunk):
+                        if kind == "hangul":
+                            dispatch_insert_text(self._driver.raw_tab, self._driver._runner, part, delay=delay)
+                        elif kind == "key":
+                            dispatch_text(self._driver.raw_tab, self._driver._runner, part, delay=delay)
+                        else:
+                            dispatch_insert_text(self._driver.raw_tab, self._driver._runner, part, delay=delay)
 
     def _modifier_mask(self) -> int:
         return sum(_MODIFIER_BITS[value] for value in self._modifiers)

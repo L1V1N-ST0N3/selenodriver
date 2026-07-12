@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import unicodedata
 from typing import Iterator
 
 
@@ -88,6 +89,53 @@ def split_hangul_runs(text: str) -> Iterator[tuple[bool, str]]:
         buffer.append(char)
     if buffer:
         yield bool(current), "".join(buffer)
+
+
+def iter_graphemes(text: str) -> Iterator[str]:
+    """Yield practical grapheme clusters without an external regex package."""
+    chars = list(str(text))
+    index = 0
+    while index < len(chars):
+        cluster = [chars[index]]
+        index += 1
+        while index < len(chars):
+            char = chars[index]
+            codepoint = ord(char)
+            is_extend = (
+                unicodedata.combining(char) != 0
+                or 0xFE00 <= codepoint <= 0xFE0F
+                or 0x1F3FB <= codepoint <= 0x1F3FF
+            )
+            if is_extend:
+                cluster.append(char)
+                index += 1
+                continue
+            if char == "\u200d" and index + 1 < len(chars):
+                cluster.extend((char, chars[index + 1]))
+                index += 2
+                continue
+            break
+        yield "".join(cluster)
+
+
+def split_input_runs(text: str) -> Iterator[tuple[str, str]]:
+    """Split text into key, Hangul, and completed-Unicode input runs."""
+    current_kind: str | None = None
+    buffer: list[str] = []
+    for cluster in iter_graphemes(text):
+        if is_hangul_text(cluster):
+            kind = "hangul"
+        elif all(ord(char) < 128 for char in cluster):
+            kind = "key"
+        else:
+            kind = "text"
+        if current_kind is not None and kind != current_kind:
+            yield current_kind, "".join(buffer)
+            buffer.clear()
+        current_kind = kind
+        buffer.append(cluster)
+    if buffer:
+        yield current_kind or "text", "".join(buffer)
 
 
 def to_dubeolsik(text: str) -> str:

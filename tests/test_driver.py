@@ -1459,6 +1459,26 @@ def test_action_chains_text_mode_uses_insert_text(driver):
     ]
 
 
+def test_emoji_graphemes_are_inserted_as_text_in_all_modes(driver):
+    from selenodriver.hangul import iter_graphemes, split_input_runs
+
+    family = "👨‍👩‍👧‍👦"
+    assert list(iter_graphemes(f"😀{family}👍🏽")) == ["😀", family, "👍🏽"]
+    assert list(split_input_runs(f"a한{family}b")) == [
+        ("key", "a"), ("hangul", "한"), ("text", family), ("key", "b"),
+    ]
+
+    element = WebElement(FakeElement(), driver._runner, driver)
+    for mode in ("auto", "key", "text", "jamo"):
+        driver.raw_tab.cdp_requests.clear()
+        element.send_keys(family, mode=mode)
+        insert_requests = [
+            request for request in driver.raw_tab.cdp_requests
+            if request["method"] == "Input.insertText"
+        ]
+        assert [request["params"]["text"] for request in insert_requests] == [family]
+
+
 def test_action_chains_key_down_and_key_up(driver):
     ActionChains(driver).key_down(Keys.CONTROL).key_up(Keys.CONTROL).perform()
 

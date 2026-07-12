@@ -6,7 +6,7 @@ from typing import Any, Iterable
 
 from .by import By, locator_to_css
 from .exceptions import NoSuchElementException, TimeoutException
-from .hangul import is_hangul_text, split_hangul_runs, to_dubeolsik
+from .hangul import split_input_runs, to_dubeolsik
 from .keys import dispatch_insert_text, dispatch_key_press, dispatch_text, is_special_key, split_key_sequence
 
 
@@ -93,19 +93,31 @@ class WebElement:
 
     def _send_text_chunk(self, chunk: str, *, delay: float, mode: str) -> None:
         if mode == "key":
-            dispatch_text(self._driver.raw_tab, self._runner, chunk, delay=delay)
+            for kind, part in split_input_runs(chunk):
+                if kind == "text":
+                    dispatch_insert_text(self._driver.raw_tab, self._runner, part, delay=delay)
+                else:
+                    dispatch_text(self._driver.raw_tab, self._runner, part, delay=delay)
             return
         if mode == "jamo":
-            dispatch_text(self._driver.raw_tab, self._runner, to_dubeolsik(chunk), delay=delay)
+            for kind, part in split_input_runs(chunk):
+                if kind == "hangul":
+                    dispatch_text(self._driver.raw_tab, self._runner, to_dubeolsik(part), delay=delay)
+                elif kind == "key":
+                    dispatch_text(self._driver.raw_tab, self._runner, part, delay=delay)
+                else:
+                    dispatch_insert_text(self._driver.raw_tab, self._runner, part, delay=delay)
             return
         if mode == "text":
             dispatch_insert_text(self._driver.raw_tab, self._runner, chunk, delay=delay)
             return
-        for is_hangul, part in split_hangul_runs(chunk):
-            if is_hangul:
+        for kind, part in split_input_runs(chunk):
+            if kind == "hangul":
                 dispatch_insert_text(self._driver.raw_tab, self._runner, part, delay=delay)
-            else:
+            elif kind == "key":
                 dispatch_text(self._driver.raw_tab, self._runner, part, delay=delay)
+            else:
+                dispatch_insert_text(self._driver.raw_tab, self._runner, part, delay=delay)
 
     def send_keys_js(self, *value: object) -> None:
         """Append text through JavaScript; use send_keys() for real keyboard input."""

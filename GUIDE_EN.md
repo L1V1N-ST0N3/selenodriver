@@ -140,11 +140,13 @@ element.send_keys("abc", delay=0.05)     # delay between events
 Input modes:
 
 - `auto`: uses `Input.insertText` for Hangul/Unicode and key events for other text
-- `key`: attempts `keyDown`/`keyUp` for every character
+- `key`: attempts `keyDown`/`keyUp` for ASCII/Hangul and uses `Input.insertText` for emoji and compound Unicode
 - `text`: sends all values through `Input.insertText`
 - `jamo`: decomposes Hangul syllables and converts them to the original app's 2-beolsik Latin key mapping
 
 `jamo` mode requires the operating system or browser input state to be configured for Korean 2-beolsik input. For general web input reliability, prefer `auto`. `ActionChains.send_keys()` and `send_keys_to_element()` support the same mode and `delay` arguments.
+
+Emoji and compound emoji use `Input.insertText` in every mode. ZWJ family emoji, skin-tone modifiers, and variation selectors are grouped as grapheme clusters so the sequence is not split into unrelated key events.
 
 Mouse, touch, offset clicks, drag operations, long press, key down/up, pauses, and element-focused input are available. This is not a complete W3C Actions implementation.
 

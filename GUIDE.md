@@ -549,11 +549,13 @@ element.send_keys("abc", delay=0.05)     # 이벤트 사이 지연
 입력 mode는 다음과 같습니다.
 
 - `auto`: 한글/Unicode 텍스트는 `Input.insertText`, 나머지는 key event
-- `key`: 모든 문자를 `keyDown`/`keyUp`으로 시도
+- `key`: ASCII/한글 입력은 `keyDown`/`keyUp`을 시도하고 emoji/복합 Unicode는 `Input.insertText`
 - `text`: 모든 값을 `Input.insertText`로 전달
 - `jamo`: 한글 음절을 자모로 분해한 뒤 원본 앱의 두벌식 영문 키 매핑으로 변환
 
 `jamo` mode는 운영체제 또는 브라우저 입력 상태가 한글 두벌식으로 설정되어 있을 때 사용하는 특수 경로입니다. 일반적인 웹 input 안정성은 `auto`가 더 높습니다. `ActionChains.send_keys()`와 `send_keys_to_element()`도 같은 mode와 `delay` 인자를 지원합니다.
+
+이모지와 복합 이모지는 mode와 관계없이 `Input.insertText`로 처리합니다. ZWJ 가족 이모지, 피부색 modifier, variation selector를 하나의 grapheme cluster로 묶어 중간 문자열이 분리되지 않도록 합니다.
 
 액션은 체인에 쌓이고, `perform()` 호출 시 순서대로 실행됩니다.
 

@@ -193,11 +193,12 @@ def dispatch_insert_text(tab: Any, runner: Any, value: str, delay: float = 0.0) 
     """Insert completed text through CDP, which is suitable for IME text."""
     import time
     from nodriver import cdp
+    from .hangul import iter_graphemes
 
-    chars = list(str(value))
-    for index, char in enumerate(chars):
-        runner.run(tab.send(cdp.input_.insert_text(char)))
-        if delay > 0 and index < len(chars) - 1:
+    clusters = list(iter_graphemes(value))
+    for index, cluster in enumerate(clusters):
+        runner.run(tab.send(cdp.input_.insert_text(cluster)))
+        if delay > 0 and index < len(clusters) - 1:
             time.sleep(delay)
 
 
