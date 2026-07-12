@@ -557,6 +557,8 @@ element.send_keys("abc", delay=0.05)     # 이벤트 사이 지연
 
 이모지와 복합 이모지는 mode와 관계없이 `Input.insertText`로 처리합니다. ZWJ 가족 이모지, 피부색 modifier, variation selector를 하나의 grapheme cluster로 묶어 중간 문자열이 분리되지 않도록 합니다.
 
+Windows의 `jamo` mode는 `ctypes` 기반 `SendInput`을 먼저 사용합니다. 호출 실패 시 `pyautogui`가 설치되어 있으면 선택적으로 fallback하며, `pyautogui`는 selenodriver의 필수 의존성이 아닙니다. Windows가 아니거나 IME 감지가 불가능하면 입력 전체를 `Input.insertText`로 처리합니다.
+
 액션은 체인에 쌓이고, `perform()` 호출 시 순서대로 실행됩니다.
 
 지원 메서드:

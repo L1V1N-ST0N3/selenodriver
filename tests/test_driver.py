@@ -1436,7 +1436,9 @@ def test_hangul_decomposition_and_dubeolsik_conversion():
     assert decompose("괜찮아") == "ㄱㅗㅐㄴㅊㅏㄴㅎㅇㅏ"
 
 
-def test_element_send_keys_modes_support_hangul(driver):
+def test_element_send_keys_modes_support_hangul(driver, monkeypatch):
+    import selenodriver.windows_ime as windows_ime
+
     raw = FakeElement()
     element = WebElement(raw, driver._runner, driver)
 
@@ -1446,9 +1448,15 @@ def test_element_send_keys_modes_support_hangul(driver):
     ]
 
     driver.raw_tab.cdp_requests.clear()
-    element.send_keys("한글", mode="jamo")
-    key_requests = [request for request in driver.raw_tab.cdp_requests if request["method"] == "Input.dispatchKeyEvent"]
-    assert [request["params"]["key"] for request in key_requests[::2]] == list("gksrmf")
+    sent = []
+    monkeypatch.setattr(windows_ime, "is_windows", lambda: True)
+    monkeypatch.setattr(windows_ime, "is_korean_input", lambda: False)
+    monkeypatch.setattr(windows_ime, "ensure_korean_input", lambda: True)
+    monkeypatch.setattr(windows_ime, "ensure_english_input", lambda: True)
+    monkeypatch.setattr(windows_ime, "send_os_text", lambda text, delay=0.0: sent.append(text))
+    element.send_keys("한글", mode="jamo", focus=False)
+
+    assert sent == ["gksrmf"]
 
 
 def test_action_chains_text_mode_uses_insert_text(driver):

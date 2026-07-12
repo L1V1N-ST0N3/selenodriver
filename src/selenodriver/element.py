@@ -76,13 +76,23 @@ class WebElement:
             raise RuntimeError("Element has no driver or tab for CDP command dispatch")
         return self._runner.run(tab.send(command))
 
-    def send_keys(self, *value: object, delay: float = 0.0, mode: str = "auto") -> None:
+    def send_keys(
+        self,
+        *value: object,
+        delay: float = 0.0,
+        mode: str = "auto",
+        focus: bool | None = None,
+    ) -> None:
         if mode not in {"auto", "key", "text", "jamo"}:
             raise ValueError("mode must be 'auto', 'key', 'text', or 'jamo'")
         self._wait_until_ready_for_action()
-        focus = getattr(self._raw, "focus", None)
-        if focus is not None:
-            self._runner.run(focus())
+        if focus is None:
+            focus = mode == "jamo"
+        if mode == "jamo" and focus and self._driver is not None:
+            self.mouse_click()
+        focus_method = getattr(self._raw, "focus", None)
+        if focus_method is not None and callable(focus_method):
+            self._runner.run(focus_method())
         for chunk in split_key_sequence(*value):
             if is_special_key(chunk) and self._driver is not None:
                 dispatch_key_press(self._driver.raw_tab, self._runner, chunk)
@@ -100,13 +110,7 @@ class WebElement:
                     dispatch_text(self._driver.raw_tab, self._runner, part, delay=delay)
             return
         if mode == "jamo":
-            for kind, part in split_input_runs(chunk):
-                if kind == "hangul":
-                    dispatch_text(self._driver.raw_tab, self._runner, to_dubeolsik(part), delay=delay)
-                elif kind == "key":
-                    dispatch_text(self._driver.raw_tab, self._runner, part, delay=delay)
-                else:
-                    dispatch_insert_text(self._driver.raw_tab, self._runner, part, delay=delay)
+            self._send_jamo_chunk(chunk, delay=delay)
             return
         if mode == "text":
             dispatch_insert_text(self._driver.raw_tab, self._runner, chunk, delay=delay)
@@ -118,6 +122,60 @@ class WebElement:
                 dispatch_text(self._driver.raw_tab, self._runner, part, delay=delay)
             else:
                 dispatch_insert_text(self._driver.raw_tab, self._runner, part, delay=delay)
+
+    def _send_jamo_chunk(self, chunk: str, *, delay: float) -> None:
+        from .windows_ime import (
+            ensure_english_input,
+            ensure_korean_input,
+            is_korean_input,
+            is_windows,
+            send_os_text,
+        )
+
+        if not is_windows():
+            dispatch_insert_text(self._driver.raw_tab, self._runner, chunk, delay=delay)
+            return
+        original_state = is_korean_input()
+        if original_state is None:
+            dispatch_insert_text(self._driver.raw_tab, self._runner, chunk, delay=delay)
+            return
+        os_input_started = False
+        try:
+            for kind, part in split_input_runs(chunk):
+                if kind == "hangul":
+                    if not ensure_korean_input():
+                        raise RuntimeError("Unable to activate Korean IME")
+                    os_input_started = True
+                    send_os_text(to_dubeolsik(part), delay=delay)
+                elif kind == "key":
+                    if not ensure_english_input():
+                        raise RuntimeError("Unable to activate English IME")
+                    os_input_started = True
+                    send_os_text(part, delay=delay)
+                else:
+                    dispatch_insert_text(self._driver.raw_tab, self._runner, part, delay=delay)
+        except (OSError, RuntimeError, ValueError):
+            if original_state is not None:
+                try:
+                    if original_state:
+                        ensure_korean_input()
+                    else:
+                        ensure_english_input()
+                except Exception:
+                    pass
+            if not os_input_started:
+                dispatch_insert_text(self._driver.raw_tab, self._runner, chunk, delay=delay)
+                return
+            raise
+        finally:
+            if original_state is not None:
+                try:
+                    if original_state:
+                        ensure_korean_input()
+                    else:
+                        ensure_english_input()
+                except Exception:
+                    pass
 
     def send_keys_js(self, *value: object) -> None:
         """Append text through JavaScript; use send_keys() for real keyboard input."""

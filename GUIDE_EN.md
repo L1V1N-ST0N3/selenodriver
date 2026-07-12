@@ -148,6 +148,8 @@ Input modes:
 
 Emoji and compound emoji use `Input.insertText` in every mode. ZWJ family emoji, skin-tone modifiers, and variation selectors are grouped as grapheme clusters so the sequence is not split into unrelated key events.
 
+On Windows, `jamo` mode uses ctypes-based `SendInput` first. If that call fails and `pyautogui` is installed, it is used as an optional fallback; `pyautogui` is not a required selenodriver dependency. On non-Windows systems or when IME detection is unavailable, the whole input falls back to `Input.insertText`.
+
 Mouse, touch, offset clicks, drag operations, long press, key down/up, pauses, and element-focused input are available. This is not a complete W3C Actions implementation.
 
 ## Waits
