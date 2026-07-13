@@ -20,6 +20,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [0.1.6 업데이트 내역 / Release Notes](#016-업데이트-내역--release-notes)
 - [0.1.7 업데이트 내역 / Release Notes](#017-업데이트-내역--release-notes)
 - [0.1.8 업데이트 내역 / Release Notes](#018-업데이트-내역--release-notes)
+- [0.1.9 업데이트 내역 / Release Notes](#019-업데이트-내역--release-notes)
 - [빠른 시작 / Quick Start](#빠른-시작--quick-start)
 - [클릭과 입력 방식 / Click and Input Modes](#클릭과-입력-방식--click-and-input-modes)
 - [좌표 클릭 / Offset and Randomized Clicks](#좌표-클릭--랜덤-위치-클릭--offset-and-randomized-clicks)
@@ -53,7 +54,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.1.8
+selenodriver 0.1.9
 ```
 
 The version is also available from Python:
@@ -151,6 +152,12 @@ field.send_keys(Keys.ENTER)
 - **클릭 예외 호환 / Click exception compatibility:** Selenium 이식 코드에서 참조하는 `ElementNotInteractableException`을 공개 예외로 추가했습니다. / Adds the public `ElementNotInteractableException` expected by Selenium migration code.
 - **Auto-wait 오류 구분 / Auto-wait error semantics:** auto-wait 이후에도 element가 숨김 또는 비활성 상태이면 일반 `TimeoutException` 대신 `ElementNotInteractableException`을 발생시킵니다. / Raises `ElementNotInteractableException` instead of a generic `TimeoutException` when an element remains hidden or disabled after auto-wait.
 - **회귀 테스트 / Regression coverage:** 숨겨진 element 클릭과 공개 예외 import를 검증하는 테스트를 추가했습니다. / Adds regression coverage for hidden-element clicks and the public exception import.
+
+## 0.1.9 업데이트 내역 / Release Notes
+
+- **비동기 JavaScript / Async JavaScript:** Selenium 호환 `execute_async_script(script, *args)`를 추가했습니다. script의 마지막 인자로 전달되는 완료 callback이 호출될 때까지 기다린 뒤 첫 번째 callback 값을 반환합니다. / Adds Selenium-compatible `execute_async_script(script, *args)`, waiting for the final completion callback and returning its first value.
+- **비동기 timeout / Async timeout:** `set_script_timeout()` 값으로 callback 대기 시간을 제한하고 초과 시 `TimeoutException`을 발생시킵니다. 동기 JavaScript 오류도 `SelenoDriverException`으로 전달됩니다. / Uses `set_script_timeout()` to limit callback wait time, raises `TimeoutException` on expiry, and propagates synchronous JavaScript failures as `SelenoDriverException`.
+- **CDP 수명 관리 / CDP lifecycle:** 동기·비동기 script가 argument 변환과 실행별 object group 해제 로직을 공유합니다. / Shares argument conversion and per-execution object-group cleanup across synchronous and asynchronous scripts.
 
 ## 빠른 시작 / Quick Start
 
@@ -316,7 +323,7 @@ Implemented:
 - common expected conditions
 - locators: CSS selector, XPath, id, name, tag name, class name
 - element actions/properties: `click`, `mouse_click`, `touch_click`, `js_click`, `submit`, `scroll_into_view`, `shadow_root`, `send_keys`, `clear`, `text`, `tag_name`, `get_attribute`, `get_dom_attribute`, `get_property`, `value_of_css_property`, `is_selected`, `size`, `location`, `rect`
-- browser helpers: `get`, `back`, `forward`, `refresh`, extension hooks, init scripts, `auto_wait`, `implicitly_wait`, `set_script_timeout`, `timeouts`, `session_id`, `capabilities`, window size/position, legacy find aliases, `find_element`, `find_element_location`, `find_element_absolute_location`, `find_elements`, `execute_script`, `send_cdp`, `execute_cdp_cmd`, `scroll_to`, `scroll_by`, `touch_scroll_by`, `touch_scroll_to`, `page_source`, `title`, `current_url`, `current_window_handle`, `window_handles`, `switch_to.window`, `switch_to.frame`, `switch_to.active_element`, cookies, `save_screenshot`, `close`, `quit`
+- browser helpers: `get`, `back`, `forward`, `refresh`, extension hooks, init scripts, `auto_wait`, `implicitly_wait`, `set_script_timeout`, `timeouts`, `session_id`, `capabilities`, window size/position, legacy find aliases, `find_element`, `find_element_location`, `find_element_absolute_location`, `find_elements`, `execute_script`, `execute_async_script`, `send_cdp`, `execute_cdp_cmd`, `scroll_to`, `scroll_by`, `touch_scroll_by`, `touch_scroll_to`, `page_source`, `title`, `current_url`, `current_window_handle`, `window_handles`, `switch_to.window`, `switch_to.frame`, `switch_to.active_element`, cookies, `save_screenshot`, `close`, `quit`
 - action chains: `click`, `touch_click`, `double_click`, `double_tap`, `context_click`, `move_to_element`, `move_to_element_with_offset`, `touch_move_to_element_with_offset`, `move_by_offset`, `drag_and_drop`, `drag_and_drop_by_offset`, `touch_drag_and_drop`, `touch_drag_by_offset`, `click_and_hold`, `long_press`, `release`, `send_keys`, `send_keys_to_element`, `key_down`, `key_up`, `pause`
 - input modes: `WebElement.send_keys()` uses CDP keyboard events by default; `WebElement.send_keys_js()` is available when JavaScript value mutation is explicitly required. The same CDP path works with desktop and mobile emulation.
 - expected conditions: `presence_of_element_located`, `visibility_of_element_located`, `element_to_be_clickable`, `invisibility_of_element_located`, `alert_is_present`, `title_is`, `title_contains`, `url_contains`, `url_to_be`, `url_matches`, text checks, and window count checks

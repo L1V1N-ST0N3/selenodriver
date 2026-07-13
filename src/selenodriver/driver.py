@@ -415,6 +415,59 @@ class Chrome:
             self._runner.run(self._tab.evaluate(wrapped, return_by_value=True))
         )
 
+    def execute_async_script(self, script: str, *args: Any) -> Any:
+        """Execute a Selenium-style asynchronous script.
+
+        The script receives a completion callback as its final argument. The
+        callback's first value is returned, and ``set_script_timeout()`` limits
+        how long the callback may take.
+        """
+        timeout_ms = max(0, int(self._script_timeout * 1000))
+        body = script if script is not None else ""
+        function_declaration = (
+            "function() {\n"
+            "  const args = Array.from(arguments);\n"
+            "  return new Promise((resolve) => {\n"
+            "    let settled = false;\n"
+            "    let timer = null;\n"
+            "    const finish = (status, value) => {\n"
+            "      if (settled) return;\n"
+            "      settled = true;\n"
+            "      if (timer !== null) clearTimeout(timer);\n"
+            "      resolve({\n"
+            "        __selenodriverAsyncResult: true,\n"
+            "        status: status,\n"
+            "        value: value === undefined ? null : value\n"
+            "      });\n"
+            "    };\n"
+            f"    timer = setTimeout(() => finish('timeout', null), {timeout_ms});\n"
+            "    args.push((value) => finish('ok', value));\n"
+            "    try {\n"
+            "      (function() {\n"
+            f"{body}\n"
+            "      }).apply(this, args);\n"
+            "    } catch (error) {\n"
+            "      finish('error', String(error && (error.stack || error.message) || error));\n"
+            "    }\n"
+            "  });\n"
+            "}"
+        )
+        result = self._execute_function_with_args(
+            function_declaration,
+            args,
+            object_group_prefix="selenodriver-execute-async-script",
+        )
+        if not isinstance(result, dict) or not result.get("__selenodriverAsyncResult"):
+            raise SelenoDriverException("Invalid execute_async_script result")
+        status = result.get("status")
+        if status == "timeout":
+            raise TimeoutException(
+                f"Timed out after {self._script_timeout} seconds waiting for async script callback"
+            )
+        if status == "error":
+            raise SelenoDriverException(str(result.get("value") or "Async script failed"))
+        return self._normalize_script_result(result.get("value"))
+
     @staticmethod
     def _normalize_script_result(value: Any) -> Any:
         if value is None:
@@ -554,9 +607,22 @@ class Chrome:
             self.touch_scroll_by(dx, dy, steps=steps)
 
     def _execute_script_with_args(self, script: str, *args: Any) -> Any:
+        return self._execute_function_with_args(
+            f"function() {{ {script}\n }}",
+            args,
+            object_group_prefix="selenodriver-execute-script",
+        )
+
+    def _execute_function_with_args(
+        self,
+        function_declaration: str,
+        args: tuple[Any, ...],
+        *,
+        object_group_prefix: str,
+    ) -> Any:
         from nodriver import cdp
 
-        object_group = f"selenodriver-execute-script-{uuid.uuid4().hex}"
+        object_group = f"{object_group_prefix}-{uuid.uuid4().hex}"
         try:
             call_args = []
             for arg in args:
@@ -596,7 +662,6 @@ class Chrome:
             if global_object_id is None:
                 raise SelenoDriverException("Failed to resolve globalThis objectId for execute_script")
 
-            function_declaration = f"function() {{ {script}\n }}"
             remote_object, errors = self._runner.run(
                 self._tab.send(
                     cdp.runtime.call_function_on(

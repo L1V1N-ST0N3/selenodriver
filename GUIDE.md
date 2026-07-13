@@ -61,7 +61,7 @@ from selenodriver.webdriver.support import expected_conditions as EC
 
 ## 버전과 의존성
 
-현재 패키지 버전은 `0.1.8`입니다.
+현재 패키지 버전은 `0.1.9`입니다.
 
 패키지 요구사항:
 
@@ -74,7 +74,7 @@ nodriver >= 0.39
 
 ```toml
 [project]
-version = "0.1.8"
+version = "0.1.9"
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",
@@ -121,7 +121,7 @@ except ElementNotInteractableException:
 | 요소 찾기 | CSS, XPath, id, name, tag, class | `driver.find_element(By.CSS_SELECTOR, ".login")` |
 | 마우스 클릭 | 중앙 클릭, offset 클릭, 랜덤 위치 클릭 | `element.click()` |
 | 터치 입력 | 터치 클릭, 더블 탭, 롱 프레스, 터치 드래그 | `element.touch_click()` |
-| JS 실행 | Selenium식 `arguments[0]` 지원 | `driver.execute_script("return arguments[0].textContent", element)` |
+| JS 실행 | 동기 및 callback 기반 비동기 실행 | `driver.execute_async_script(script, value)` |
 | Wait | `WebDriverWait`, `EC.*`, optional auto wait | `wait.until(EC.element_to_be_clickable(locator))` |
 | 모바일 | Android/iOS 프로필, viewport, UA, touch emulation | `MobileEmulationExtension("android")` |
 | CDP | raw CDP 명령 직접 전달 | `driver.send_cdp(command)` |
@@ -312,6 +312,20 @@ text = driver.execute_script("return arguments[0].textContent;", element)
 ```
 
 `0.1.2`부터 argument가 있는 script는 `globalThis`의 CDP `objectId`를 실행 context로 사용합니다. element와 global object handle은 실행별 object group으로 관리되어 성공하거나 예외가 발생한 뒤에도 정리됩니다. CDP object 해석 또는 JavaScript 실행이 실패하면 `SelenoDriverException`이 발생합니다.
+
+`0.1.9`부터 Selenium식 비동기 script를 지원합니다. 마지막 `arguments`가 완료 callback이며 첫 번째 callback 인자가 Python 반환값이 됩니다.
+
+```python
+driver.set_script_timeout(10)
+result = driver.execute_async_script("""
+const done = arguments[arguments.length - 1];
+fetch(arguments[0])
+  .then(response => response.json())
+  .then(data => done(data));
+""", api_url)
+```
+
+설정 시간 안에 callback이 호출되지 않으면 `TimeoutException`이 발생합니다.
 
 ## Locator
 

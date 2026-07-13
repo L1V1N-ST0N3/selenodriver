@@ -8,7 +8,11 @@
 python -m pip install selenodriver
 ```
 
-Version 0.1.8 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.1.9 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+
+### Version 0.1.9
+
+Selenium-compatible `execute_async_script(script, *args)` waits for the completion callback passed as the script's final argument. `set_script_timeout()` controls the maximum wait and a timeout raises `TimeoutException`.
 
 ### Version 0.1.8
 
@@ -143,6 +147,20 @@ text = driver.execute_script("return arguments[0].textContent", element)
 Serializable CDP `RemoteObject` values are normalized to Python values. JavaScript exception details raise `SelenoDriverException`.
 
 Since version 0.1.2, scripts with arguments use the CDP `objectId` for `globalThis` as their execution context. Element and global object handles share a per-execution object group that is released after both successful and failed calls. Object resolution and JavaScript execution failures raise `SelenoDriverException`.
+
+Since version 0.1.9, callback-based asynchronous scripts are supported:
+
+```python
+driver.set_script_timeout(10)
+result = driver.execute_async_script("""
+const done = arguments[arguments.length - 1];
+fetch(arguments[0])
+  .then(response => response.json())
+  .then(data => done(data));
+""", api_url)
+```
+
+The callback's first argument becomes the Python return value. If the callback is not called before the configured script timeout, `TimeoutException` is raised.
 
 Shadow roots support both CSS selectors and XPath:
 

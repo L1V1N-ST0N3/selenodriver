@@ -181,6 +181,7 @@ class FakeTab:
         self.global_object_id = "global-1"
         self.runtime_evaluate_errors = None
         self.runtime_call_errors = None
+        self.runtime_call_value = "script-result"
 
     def query_selector_all(self, selector):
         if selector in self.delayed_queries:
@@ -252,7 +253,7 @@ class FakeTab:
                 if method == "Runtime.callFunctionOn":
                     self.script_commands.append(request)
                     return (
-                        type("RemoteObject", (), {"value": "script-result"})(),
+                        type("RemoteObject", (), {"value": self.runtime_call_value})(),
                         self.runtime_call_errors,
                     )
                 if method == "Runtime.releaseObjectGroup":
@@ -687,6 +688,52 @@ def test_execute_script_with_args_raises_for_script_error(driver):
         driver.execute_script("return arguments[0]", "value")
 
     assert driver.raw_tab.cdp_methods[-1] == "Runtime.releaseObjectGroup"
+
+
+def test_execute_async_script_waits_for_callback_and_returns_value(driver):
+    driver.raw_tab.runtime_call_value = {
+        "__selenodriverAsyncResult": True,
+        "status": "ok",
+        "value": {"success": True},
+    }
+
+    result = driver.execute_async_script(
+        "const done = arguments[arguments.length - 1]; done(arguments[0]);",
+        {"success": True},
+    )
+
+    assert result == {"success": True}
+    request = driver.raw_tab.script_commands[-1]
+    declaration = request["params"]["functionDeclaration"]
+    assert "args.push((value) => finish('ok', value))" in declaration
+    assert request["params"]["awaitPromise"] is True
+    assert driver.raw_tab.cdp_methods[-1] == "Runtime.releaseObjectGroup"
+
+
+def test_execute_async_script_uses_script_timeout(driver):
+    driver.set_script_timeout(1.25)
+    driver.raw_tab.runtime_call_value = {
+        "__selenodriverAsyncResult": True,
+        "status": "timeout",
+        "value": None,
+    }
+
+    with pytest.raises(TimeoutException, match="1.25 seconds"):
+        driver.execute_async_script("void 0")
+
+    declaration = driver.raw_tab.script_commands[-1]["params"]["functionDeclaration"]
+    assert "1250" in declaration
+
+
+def test_execute_async_script_propagates_javascript_errors(driver):
+    driver.raw_tab.runtime_call_value = {
+        "__selenodriverAsyncResult": True,
+        "status": "error",
+        "value": "Error: async failed",
+    }
+
+    with pytest.raises(SelenoDriverException, match="async failed"):
+        driver.execute_async_script("throw new Error('async failed')")
 
 
 def test_execute_script_supports_return_and_expression_styles(driver):

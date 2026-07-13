@@ -42,6 +42,16 @@ def test_desktop_navigation_script_and_cdp_input(desktop_driver):
     assert desktop_driver.execute_script("return arguments[0].value", field) == "abc"
 
 
+def test_execute_async_script_waits_for_completion_callback(desktop_driver):
+    result = desktop_driver.execute_async_script(
+        "const done = arguments[arguments.length - 1]; "
+        "setTimeout(() => done({success: true, id: arguments[0]}), 50);",
+        "review-1",
+    )
+
+    assert result == {"success": True, "id": "review-1"}
+
+
 def test_mobile_navigation_script_and_input(mobile_driver):
     mobile_driver.get("data:text/html,<input id='field'>")
     field = mobile_driver.find_element(By.ID, "field")
