@@ -354,7 +354,10 @@ class Chrome:
         if value is None:
             raise ValueError("value is required")
         if by == By.XPATH:
-            raw_elements = self._runner.run(self._tab.xpath(value, timeout=0)) or []
+            if type(self._tab).__module__.startswith("nodriver."):
+                raw_elements = self._runner.run(self._find_xpath_without_dom_enable(value)) or []
+            else:
+                raw_elements = self._runner.run(self._tab.xpath(value, timeout=0)) or []
         elif by == By.LINK_TEXT:
             raw = self._runner.run(self._tab.find(value, best_match=False, timeout=0))
             raw_elements = [raw] if raw else []
@@ -364,6 +367,39 @@ class Chrome:
             selector = locator_to_css(by, value)
             raw_elements = self._runner.run(self._tab.query_selector_all(selector)) or []
         return [WebElement(raw, self._runner, self) for raw in raw_elements if raw is not None]
+
+    async def _find_xpath_without_dom_enable(self, xpath: str) -> list[Any]:
+        """Run a DOM search without DOM.enable for older Chrome targets."""
+        from nodriver import cdp
+        from nodriver.core import element as nodriver_element
+        from nodriver.core import util as nodriver_util
+
+        document = await self._tab.send(cdp.dom.get_document(depth=-1, pierce=True))
+        search_id, count = await self._tab.send(
+            cdp.dom.perform_search(xpath, include_user_agent_shadow_dom=True)
+        )
+        try:
+            if not count:
+                return []
+            node_ids = await self._tab.send(cdp.dom.get_search_results(search_id, 0, count))
+        finally:
+            try:
+                await self._tab.send(cdp.dom.discard_search_results(search_id))
+            except Exception:
+                pass
+
+        elements: list[Any] = []
+        for node_id in node_ids:
+            node = nodriver_util.filter_recurse(document, lambda item: item.node_id == node_id)
+            if node is None:
+                node = await self._tab.send(
+                    cdp.dom.describe_node(node_id=node_id, depth=-1, pierce=True)
+                )
+            element = nodriver_element.create(node, tab=self._tab, tree=document)
+            if element.node_type == 3 and element.parent is not None:
+                element = element.parent
+            elements.append(element)
+        return elements
 
     def execute_script(self, script: str, *args: Any) -> Any:
         if args:

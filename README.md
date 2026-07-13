@@ -17,6 +17,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [0.1.3 업데이트 내역 / Release Notes](#013-업데이트-내역--release-notes)
 - [0.1.4 업데이트 내역 / Release Notes](#014-업데이트-내역--release-notes)
 - [0.1.5 업데이트 내역 / Release Notes](#015-업데이트-내역--release-notes)
+- [0.1.6 업데이트 내역 / Release Notes](#016-업데이트-내역--release-notes)
 - [빠른 시작 / Quick Start](#빠른-시작--quick-start)
 - [클릭과 입력 방식 / Click and Input Modes](#클릭과-입력-방식--click-and-input-modes)
 - [좌표 클릭 / Offset and Randomized Clicks](#좌표-클릭--랜덤-위치-클릭--offset-and-randomized-clicks)
@@ -50,7 +51,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.1.5
+selenodriver 0.1.6
 ```
 
 The version is also available from Python:
@@ -129,6 +130,11 @@ field.send_keys(Keys.ENTER)
 
 - **상대 부모 XPath / Relative parent XPath:** `element.find_element(By.XPATH, "./../..")`처럼 기준 element의 조상을 찾는 XPath가 하위 요소 조회로 잘못 처리되던 문제를 수정했습니다. nodriver의 CDP DOM tree를 직접 따라가므로 SVG `path`에서 상위 버튼을 찾는 흐름도 지원합니다. / Fixes relative parent XPath lookups such as `./../..` by traversing nodriver's CDP DOM tree directly, including SVG path-to-button lookup flows.
 - **회귀 테스트 / Regression coverage:** 단위 테스트와 실제 Chrome 조상 탐색 smoke test를 추가했습니다. / Adds unit and real-Chrome ancestor lookup coverage.
+
+## 0.1.6 업데이트 내역 / Release Notes
+
+- **구버전 Chrome XPath / Legacy Chrome XPath:** 전역 XPath 조회가 nodriver `Tab.xpath()`의 `DOM.enable` 호출에 의존하지 않도록 변경했습니다. `DOM.getDocument`, `performSearch`, `getSearchResults`를 직접 사용하여 `DOM.enable wasn't found` 오류가 발생하는 구버전 target을 지원합니다. / Global XPath no longer depends on nodriver `Tab.xpath()` or `DOM.enable`; it directly uses DOM search commands for older targets that reject `DOM.enable`.
+- **실제 Chrome 검증 / Real-Chrome verification:** `DOM.enable`을 거부하는 감시 상태에서 텍스트 기반 button XPath 조회를 검증했습니다. / Verifies button XPath lookup while explicitly rejecting any `DOM.enable` call.
 
 ## 빠른 시작 / Quick Start
 

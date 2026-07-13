@@ -103,3 +103,23 @@ def test_element_relative_xpath_returns_ancestor(desktop_driver):
     ancestor = path.find_element(By.XPATH, "./../../..")
 
     assert ancestor.get_attribute("id") == "outer"
+
+
+def test_global_xpath_does_not_require_dom_enable(desktop_driver, monkeypatch):
+    desktop_driver.get("data:text/html,<button id='confirm'>Confirm</button>")
+    original_send = desktop_driver.raw_tab.send
+
+    async def reject_dom_enable(command, *args, **kwargs):
+        if type(command).__name__ == "generator":
+            frame = getattr(command, "gi_frame", None)
+            if frame is not None and frame.f_code.co_name == "enable":
+                raise AssertionError("Global XPath must not call DOM.enable")
+        return await original_send(command, *args, **kwargs)
+
+    monkeypatch.setattr(desktop_driver.raw_tab, "send", reject_dom_enable)
+
+    button = desktop_driver.find_element(
+        By.XPATH, "//button[normalize-space(text()) = 'Confirm']"
+    )
+
+    assert button.get_attribute("id") == "confirm"

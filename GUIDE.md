@@ -61,7 +61,7 @@ from selenodriver.webdriver.support import expected_conditions as EC
 
 ## 버전과 의존성
 
-현재 패키지 버전은 `0.1.5`입니다.
+현재 패키지 버전은 `0.1.6`입니다.
 
 패키지 요구사항:
 
@@ -74,7 +74,7 @@ nodriver >= 0.39
 
 ```toml
 [project]
-version = "0.1.5"
+version = "0.1.6"
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",
@@ -348,6 +348,8 @@ ancestor = button.find_element(By.XPATH, "./../..")
 ```
 
 `./..`, `./../..`처럼 부모 이동으로만 구성된 상대 XPath는 nodriver의 CDP DOM tree를 직접 따라가므로 기준 element 바깥의 조상도 찾을 수 있습니다.
+
+전역 XPath는 nodriver의 `Tab.xpath()`를 호출하지 않고 CDP DOM search 명령을 직접 사용합니다. 따라서 `DOM.enable`을 제공하지 않는 구버전 Chrome target에서도 XPath를 사용할 수 있습니다.
 
 ### 텍스트와 속성
 

@@ -8,7 +8,7 @@
 python -m pip install selenodriver
 ```
 
-Version 0.1.5 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.1.6 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
 
 ## Quick Start
 
@@ -76,6 +76,8 @@ ancestor = button.find_element(By.XPATH, "./../..")
 ```
 
 Parent-only relative XPath expressions such as `./..` and `./../..` traverse nodriver's CDP DOM tree directly, so they can return ancestors outside the element's descendant subtree.
+
+Global XPath uses CDP DOM search commands directly instead of nodriver's `Tab.xpath()`, allowing XPath lookup on older Chrome targets that do not expose `DOM.enable`.
 
 ## WebElement
 
