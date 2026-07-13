@@ -18,6 +18,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [0.1.4 업데이트 내역 / Release Notes](#014-업데이트-내역--release-notes)
 - [0.1.5 업데이트 내역 / Release Notes](#015-업데이트-내역--release-notes)
 - [0.1.6 업데이트 내역 / Release Notes](#016-업데이트-내역--release-notes)
+- [0.1.7 업데이트 내역 / Release Notes](#017-업데이트-내역--release-notes)
 - [빠른 시작 / Quick Start](#빠른-시작--quick-start)
 - [클릭과 입력 방식 / Click and Input Modes](#클릭과-입력-방식--click-and-input-modes)
 - [좌표 클릭 / Offset and Randomized Clicks](#좌표-클릭--랜덤-위치-클릭--offset-and-randomized-clicks)
@@ -51,7 +52,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.1.6
+selenodriver 0.1.7
 ```
 
 The version is also available from Python:
@@ -135,6 +136,14 @@ field.send_keys(Keys.ENTER)
 
 - **구버전 Chrome XPath / Legacy Chrome XPath:** 전역 XPath 조회가 nodriver `Tab.xpath()`의 `DOM.enable` 호출에 의존하지 않도록 변경했습니다. `DOM.getDocument`, `performSearch`, `getSearchResults`를 직접 사용하여 `DOM.enable wasn't found` 오류가 발생하는 구버전 target을 지원합니다. / Global XPath no longer depends on nodriver `Tab.xpath()` or `DOM.enable`; it directly uses DOM search commands for older targets that reject `DOM.enable`.
 - **실제 Chrome 검증 / Real-Chrome verification:** `DOM.enable`을 거부하는 감시 상태에서 텍스트 기반 button XPath 조회를 검증했습니다. / Verifies button XPath lookup while explicitly rejecting any `DOM.enable` call.
+
+## 0.1.7 업데이트 내역 / Release Notes
+
+- **스크롤 좌표 보정 / Scrolled coordinate correction:** `ActionChains.move_to_element()`와 `move_to_element_with_offset()`이 입력 전에 대상 element를 화면 안으로 이동하고, CDP 입력에 문서 전체 좌표가 아닌 viewport 좌표를 사용합니다. 스크롤된 페이지에서 터치나 마우스 입력이 화면 밖 또는 잘못된 위치로 전달되던 문제를 수정합니다. / `ActionChains.move_to_element()` and `move_to_element_with_offset()` now bring the target into view before input and use viewport coordinates for CDP events, fixing touch and mouse input sent outside the viewport or to the wrong location on scrolled pages.
+- **터치 스크롤 안정화 / Touch scrolling:** `WebElement.touch_click()`이 한 번의 swipe로 중단하지 않고 제한된 횟수 안에서 대상이 viewport에 들어올 때까지 스크롤합니다. / `WebElement.touch_click()` now scrolls until the target enters the viewport within the configured swipe limit instead of stopping after one swipe.
+- **DOM 프로퍼티 호환 / DOM property compatibility:** `get_attribute()`가 일반 HTML attribute에 없는 `outerHTML`, `innerText` 등의 DOM property로 fallback합니다. Selenium 이식 코드의 클릭 전후 상태 검증이 `None`으로 오판되는 문제를 수정합니다. / `get_attribute()` now falls back to DOM properties such as `outerHTML` and `innerText` when no HTML attribute exists, preventing Selenium migration code from misreading state checks as `None`.
+- **터치 드래그 좌표 / Touch drag coordinates:** touch drag 및 offset drag도 viewport 좌표를 사용하도록 통일했습니다. / Touch drag and offset-drag operations now consistently use viewport coordinates.
+- **실제 Chrome 검증 / Real-Chrome verification:** 긴 모바일 페이지의 화면 밖 button을 스크롤한 뒤 offset touch로 클릭하고 `outerHTML` 상태 변화를 확인하는 smoke test를 추가했습니다. / Adds a real-Chrome smoke test that scrolls to an off-screen button on a long mobile page, performs an offset touch, and verifies its `outerHTML` state change.
 
 ## 빠른 시작 / Quick Start
 

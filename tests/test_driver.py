@@ -972,6 +972,15 @@ def test_find_element_by_css(driver):
     assert element.get_attribute("href") == "/x"
 
 
+def test_get_attribute_falls_back_to_dom_property(driver):
+    raw = FakeElement(properties={"outerHTML": '<div class="selected"></div>'})
+    driver.raw_tab.queries["div"] = [raw]
+
+    element = driver.find_element(By.CSS_SELECTOR, "div")
+
+    assert element.get_attribute("outerHTML") == '<div class="selected"></div>'
+
+
 def test_legacy_find_element_aliases(driver):
     raw = FakeElement("hello")
     driver.raw_tab.queries[".item"] = [raw]
@@ -1347,6 +1356,7 @@ def test_action_chains_touch_click_at_current_position(driver):
     ActionChains(driver).move_to_element_with_offset(element, 5, -3, input_type="touch").click(input_type="touch").perform()
 
     assert len(driver.raw_tab.sent) == 2
+    assert any("scrollIntoView" in script for script in raw.applied_scripts)
 
 
 def test_action_chains_touch_click_alias(driver):

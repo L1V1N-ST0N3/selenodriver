@@ -94,6 +94,22 @@ def test_mobile_ime_mixed_input(mobile_driver):
     ) == "모바일abc123!@😀"
 
 
+def test_scrolled_mobile_touch_uses_viewport_coordinates(mobile_driver):
+    mobile_driver.get(
+        "data:text/html,<body style='height:2400px'>"
+        "<button id='target' style='margin-top:1800px;width:120px;height:48px' "
+        "onclick=\"this.dataset.clicked='yes'\">Target</button></body>"
+    )
+    button = mobile_driver.find_element(By.ID, "target")
+
+    ActionChains(mobile_driver).touch_move_to_element_with_offset(
+        button, 20, 0
+    ).touch_click().perform()
+
+    assert button.get_attribute("data-clicked") == "yes"
+    assert "data-clicked" in button.get_attribute("outerHTML")
+
+
 def test_element_relative_xpath_returns_ancestor(desktop_driver):
     desktop_driver.get(
         "data:text/html,<button id='outer'><span><svg><path id='pen'></path></svg></span></button>"

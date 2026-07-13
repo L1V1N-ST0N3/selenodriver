@@ -61,7 +61,7 @@ from selenodriver.webdriver.support import expected_conditions as EC
 
 ## 버전과 의존성
 
-현재 패키지 버전은 `0.1.6`입니다.
+현재 패키지 버전은 `0.1.7`입니다.
 
 패키지 요구사항:
 
@@ -74,11 +74,29 @@ nodriver >= 0.39
 
 ```toml
 [project]
-version = "0.1.6"
+version = "0.1.7"
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",
 ]
+```
+
+### 0.1.7 주요 변경 사항
+
+- 스크롤된 페이지에서 `ActionChains.move_to_element()`와 `move_to_element_with_offset()`이 element를 먼저 viewport 안으로 이동합니다.
+- CDP 마우스·터치 좌표는 문서 전체 좌표가 아닌 viewport 좌표를 사용합니다.
+- `touch_click()`은 대상이 화면에 들어올 때까지 최대 swipe 횟수 안에서 스크롤합니다.
+- `get_attribute("outerHTML")`, `get_attribute("innerText")`처럼 HTML attribute가 아닌 DOM property 조회도 지원합니다.
+- touch drag와 offset drag도 같은 viewport 좌표 기준을 사용합니다.
+
+스크롤된 element에 offset touch를 수행할 때 offset은 element 중앙 기준입니다.
+
+```python
+ActionChains(driver).touch_move_to_element_with_offset(
+    button, 20, 0
+).touch_click().perform()
+
+html = button.get_attribute("outerHTML")
 ```
 
 ## 빠른 기능 요약

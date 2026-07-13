@@ -104,6 +104,10 @@ class ActionChains:
 
     def move_to_element(self, to_element: WebElement, *, input_type: str = "mouse") -> "ActionChains":
         def _action() -> None:
+            if input_type == "touch":
+                to_element.touch_scroll_into_view()
+            else:
+                to_element.scroll_into_view()
             self._set_position_from_element(to_element)
             if input_type == "mouse":
                 self._mouse_event("mouseMoved")
@@ -124,7 +128,11 @@ class ActionChains:
         input_type: str = "mouse",
     ) -> "ActionChains":
         def _action() -> None:
-            rect = to_element.rect
+            if input_type == "touch":
+                to_element.touch_scroll_into_view()
+            else:
+                to_element.scroll_into_view()
+            rect = to_element._viewport_rect()
             self._x = rect["x"] + rect["width"] / 2 + int(xoffset)
             self._y = rect["y"] + rect["height"] / 2 + int(yoffset)
             if input_type == "mouse":
@@ -159,8 +167,8 @@ class ActionChains:
 
     def touch_drag_and_drop(self, source: WebElement, target: WebElement, *, steps: int = 8) -> "ActionChains":
         def _action() -> None:
-            source_rect = source.rect
-            target_rect = target.rect
+            source_rect = source._viewport_rect()
+            target_rect = target._viewport_rect()
             start_x = source_rect["x"] + source_rect["width"] / 2
             start_y = source_rect["y"] + source_rect["height"] / 2
             end_x = target_rect["x"] + target_rect["width"] / 2
@@ -174,7 +182,7 @@ class ActionChains:
 
     def touch_drag_by_offset(self, source: WebElement, xoffset: int, yoffset: int, *, steps: int = 8) -> "ActionChains":
         def _action() -> None:
-            rect = source.rect
+            rect = source._viewport_rect()
             start_x = rect["x"] + rect["width"] / 2
             start_y = rect["y"] + rect["height"] / 2
             end_x = start_x + int(xoffset)
@@ -350,6 +358,6 @@ class ActionChains:
         self._touch_end()
 
     def _set_position_from_element(self, element: WebElement) -> None:
-        rect = element.rect
+        rect = element._viewport_rect()
         self._x = rect["x"] + rect["width"] / 2
         self._y = rect["y"] + rect["height"] / 2

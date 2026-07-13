@@ -58,7 +58,7 @@ class WebElement:
             self._runner.run(self._raw.click())
             return
         self._wait_until_ready_for_action()
-        self.touch_scroll_into_view(max_swipes=1)
+        self.touch_scroll_into_view()
         self._touch_click_center()
 
     def js_click(self) -> None:
@@ -207,12 +207,30 @@ class WebElement:
         attrs = getattr(self._raw, "attrs", None) or getattr(self._raw, "attributes", None)
         attrs = self._runner.run(attrs() if callable(attrs) else attrs)
         if isinstance(attrs, dict):
-            return attrs.get(name)
+            if name in attrs:
+                return attrs[name]
         if isinstance(attrs, Iterable) and not isinstance(attrs, (str, bytes)):
             items = list(attrs)
             for index in range(0, len(items) - 1, 2):
                 if items[index] == name:
                     return items[index + 1]
+
+        # Selenium's get_attribute() also exposes DOM properties such as
+        # outerHTML and innerText, which are not present in the attribute map.
+        apply = getattr(self._raw, "apply", None)
+        if apply is not None:
+            script = f"""
+            (el) => {{
+              const value = el[{name!r}];
+              if (value === undefined || value === null || typeof value === 'object') {{
+                return el.getAttribute({name!r});
+              }}
+              return value;
+            }}
+            """
+            value = self._runner.run(apply(script, return_by_value=True))
+            if value is not None:
+                return value
         get_js_attributes = getattr(self._raw, "get_js_attributes", None)
         if get_js_attributes is not None:
             js_attrs = self._runner.run(get_js_attributes())

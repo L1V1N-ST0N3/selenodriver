@@ -1,6 +1,6 @@
 from .action_chains import ActionChains
 
-__version__ = "0.1.6"
+__version__ = "0.1.7"
 from .alert import Alert
 from .by import By
 from .driver import Chrome

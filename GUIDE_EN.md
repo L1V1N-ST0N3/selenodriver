@@ -8,7 +8,25 @@
 python -m pip install selenodriver
 ```
 
-Version 0.1.6 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.1.7 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+
+### Version 0.1.7
+
+- `ActionChains.move_to_element()` and `move_to_element_with_offset()` bring scrolled targets into view before dispatching input.
+- CDP mouse and touch events use viewport coordinates instead of document coordinates.
+- `touch_click()` keeps scrolling within its swipe limit until the target enters the viewport.
+- `get_attribute()` falls back to DOM properties such as `outerHTML` and `innerText` when no matching HTML attribute exists.
+- Touch drag and offset-drag operations use the same viewport coordinate system.
+
+Offsets remain relative to the element center:
+
+```python
+ActionChains(driver).touch_move_to_element_with_offset(
+    button, 20, 0
+).touch_click().perform()
+
+html = button.get_attribute("outerHTML")
+```
 
 ## Quick Start
 
