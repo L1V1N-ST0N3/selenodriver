@@ -61,7 +61,7 @@ from selenodriver.webdriver.support import expected_conditions as EC
 
 ## 버전과 의존성
 
-현재 패키지 버전은 `0.1.7`입니다.
+현재 패키지 버전은 `0.1.8`입니다.
 
 패키지 요구사항:
 
@@ -74,7 +74,7 @@ nodriver >= 0.39
 
 ```toml
 [project]
-version = "0.1.7"
+version = "0.1.8"
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",
@@ -97,6 +97,20 @@ ActionChains(driver).touch_move_to_element_with_offset(
 ).touch_click().perform()
 
 html = button.get_attribute("outerHTML")
+```
+
+### 0.1.8 클릭 예외
+
+`auto_wait=True`인 상태에서 element가 제한 시간 이후에도 숨김 또는 비활성 상태라면 `ElementNotInteractableException`이 발생합니다.
+
+```python
+from selenodriver import ElementNotInteractableException
+
+try:
+    element.click()
+except ElementNotInteractableException:
+    # DOM 변경 후 기존 element를 재사용하지 말고 다시 조회합니다.
+    element = driver.find_element(By.CSS_SELECTOR, "button")
 ```
 
 ## 빠른 기능 요약

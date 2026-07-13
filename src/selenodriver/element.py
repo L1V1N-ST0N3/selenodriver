@@ -5,7 +5,7 @@ import uuid
 from typing import Any, Iterable
 
 from .by import By, locator_to_css
-from .exceptions import NoSuchElementException, TimeoutException
+from .exceptions import ElementNotInteractableException, NoSuchElementException
 from .hangul import split_input_runs
 from .keys import dispatch_ime_text, dispatch_insert_text, dispatch_key_press, dispatch_text, is_special_key, split_key_sequence
 
@@ -433,7 +433,9 @@ class WebElement:
             if self.is_displayed() and self.is_enabled():
                 return
             if self._monotonic() >= deadline:
-                raise TimeoutException(f"Timed out after {self._driver._auto_wait_timeout} seconds waiting for element to be actionable")
+                raise ElementNotInteractableException(
+                    f"Element was not actionable after {self._driver._auto_wait_timeout} seconds"
+                )
             self._sleep(0.05)
 
     def _monotonic(self) -> float:

@@ -17,6 +17,10 @@ class ElementClickInterceptedException(SelenoDriverException):
     """Raised when another element intercepts a click."""
 
 
+class ElementNotInteractableException(SelenoDriverException):
+    """Raised when an element exists but cannot currently receive input."""
+
+
 class NoSuchElementException(SelenoDriverException):
     """Raised when an element lookup returns no matching element."""
 

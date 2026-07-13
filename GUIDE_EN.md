@@ -8,7 +8,20 @@
 python -m pip install selenodriver
 ```
 
-Version 0.1.7 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.1.8 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+
+### Version 0.1.8
+
+`ElementNotInteractableException` is now public. With `auto_wait=True`, clicking an element that remains hidden or disabled after the wait raises this exception instead of a generic `TimeoutException`.
+
+```python
+from selenodriver import ElementNotInteractableException
+
+try:
+    element.click()
+except ElementNotInteractableException:
+    element = driver.find_element(By.CSS_SELECTOR, "button")
+```
 
 ### Version 0.1.7
 

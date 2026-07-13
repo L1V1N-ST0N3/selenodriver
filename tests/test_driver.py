@@ -10,6 +10,7 @@ from selenodriver import (
     Alert,
     By,
     Chrome,
+    ElementNotInteractableException,
     Keys,
     MobileEmulationExtension,
     MobileProfile,
@@ -970,6 +971,22 @@ def test_find_element_by_css(driver):
 
     assert element.text == "hello"
     assert element.get_attribute("href") == "/x"
+
+
+def test_element_not_interactable_exception_is_public():
+    assert issubclass(ElementNotInteractableException, SelenoDriverException)
+
+
+def test_click_raises_not_interactable_after_auto_wait(driver):
+    raw = FakeElement(displayed=False)
+    driver.raw_tab.queries["button"] = [raw]
+    driver._auto_wait = True
+    driver._auto_wait_timeout = 0
+
+    element = driver.find_element(By.CSS_SELECTOR, "button")
+
+    with pytest.raises(ElementNotInteractableException):
+        element.click()
 
 
 def test_get_attribute_falls_back_to_dom_property(driver):

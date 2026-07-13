@@ -19,6 +19,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [0.1.5 업데이트 내역 / Release Notes](#015-업데이트-내역--release-notes)
 - [0.1.6 업데이트 내역 / Release Notes](#016-업데이트-내역--release-notes)
 - [0.1.7 업데이트 내역 / Release Notes](#017-업데이트-내역--release-notes)
+- [0.1.8 업데이트 내역 / Release Notes](#018-업데이트-내역--release-notes)
 - [빠른 시작 / Quick Start](#빠른-시작--quick-start)
 - [클릭과 입력 방식 / Click and Input Modes](#클릭과-입력-방식--click-and-input-modes)
 - [좌표 클릭 / Offset and Randomized Clicks](#좌표-클릭--랜덤-위치-클릭--offset-and-randomized-clicks)
@@ -52,7 +53,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.1.7
+selenodriver 0.1.8
 ```
 
 The version is also available from Python:
@@ -144,6 +145,12 @@ field.send_keys(Keys.ENTER)
 - **DOM 프로퍼티 호환 / DOM property compatibility:** `get_attribute()`가 일반 HTML attribute에 없는 `outerHTML`, `innerText` 등의 DOM property로 fallback합니다. Selenium 이식 코드의 클릭 전후 상태 검증이 `None`으로 오판되는 문제를 수정합니다. / `get_attribute()` now falls back to DOM properties such as `outerHTML` and `innerText` when no HTML attribute exists, preventing Selenium migration code from misreading state checks as `None`.
 - **터치 드래그 좌표 / Touch drag coordinates:** touch drag 및 offset drag도 viewport 좌표를 사용하도록 통일했습니다. / Touch drag and offset-drag operations now consistently use viewport coordinates.
 - **실제 Chrome 검증 / Real-Chrome verification:** 긴 모바일 페이지의 화면 밖 button을 스크롤한 뒤 offset touch로 클릭하고 `outerHTML` 상태 변화를 확인하는 smoke test를 추가했습니다. / Adds a real-Chrome smoke test that scrolls to an off-screen button on a long mobile page, performs an offset touch, and verifies its `outerHTML` state change.
+
+## 0.1.8 업데이트 내역 / Release Notes
+
+- **클릭 예외 호환 / Click exception compatibility:** Selenium 이식 코드에서 참조하는 `ElementNotInteractableException`을 공개 예외로 추가했습니다. / Adds the public `ElementNotInteractableException` expected by Selenium migration code.
+- **Auto-wait 오류 구분 / Auto-wait error semantics:** auto-wait 이후에도 element가 숨김 또는 비활성 상태이면 일반 `TimeoutException` 대신 `ElementNotInteractableException`을 발생시킵니다. / Raises `ElementNotInteractableException` instead of a generic `TimeoutException` when an element remains hidden or disabled after auto-wait.
+- **회귀 테스트 / Regression coverage:** 숨겨진 element 클릭과 공개 예외 import를 검증하는 테스트를 추가했습니다. / Adds regression coverage for hidden-element clicks and the public exception import.
 
 ## 빠른 시작 / Quick Start
 
