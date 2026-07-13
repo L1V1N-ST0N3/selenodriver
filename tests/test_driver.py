@@ -1436,9 +1436,7 @@ def test_hangul_decomposition_and_dubeolsik_conversion():
     assert decompose("괜찮아") == "ㄱㅗㅐㄴㅊㅏㄴㅎㅇㅏ"
 
 
-def test_element_send_keys_modes_support_hangul(driver, monkeypatch):
-    import selenodriver.windows_ime as windows_ime
-
+def test_element_send_keys_modes_support_hangul(driver):
     raw = FakeElement()
     element = WebElement(raw, driver._runner, driver)
 
@@ -1448,15 +1446,16 @@ def test_element_send_keys_modes_support_hangul(driver, monkeypatch):
     ]
 
     driver.raw_tab.cdp_requests.clear()
-    sent = []
-    monkeypatch.setattr(windows_ime, "is_windows", lambda: True)
-    monkeypatch.setattr(windows_ime, "is_korean_input", lambda: False)
-    monkeypatch.setattr(windows_ime, "ensure_korean_input", lambda: True)
-    monkeypatch.setattr(windows_ime, "ensure_english_input", lambda: True)
-    monkeypatch.setattr(windows_ime, "send_os_text", lambda text, delay=0.0: sent.append(text))
     element.send_keys("한글", mode="jamo", focus=False)
-
-    assert sent == ["gksrmf"]
+    assert [request["method"] for request in driver.raw_tab.cdp_requests] == [
+        "Input.imeSetComposition", "Input.insertText",
+        "Input.imeSetComposition", "Input.insertText",
+    ]
+    compositions = [
+        request["params"] for request in driver.raw_tab.cdp_requests
+        if request["method"] == "Input.imeSetComposition"
+    ]
+    assert [request["text"] for request in compositions] == ["한", "글"]
 
 
 def test_action_chains_text_mode_uses_insert_text(driver):
@@ -1500,3 +1499,17 @@ def test_action_chains_sends_modified_key_through_cdp(driver):
     assert len(key_requests) == 4
     assert key_requests[1]["params"]["key"] == "v"
     assert key_requests[1]["params"]["modifiers"] == 2
+
+
+def test_printable_punctuation_does_not_use_control_virtual_key_codes(driver):
+    element = WebElement(FakeElement(), driver._runner, driver)
+
+    element.send_keys("!@#", mode="key")
+
+    key_downs = [
+        request["params"] for request in driver.raw_tab.cdp_requests
+        if request["method"] == "Input.dispatchKeyEvent"
+        and request["params"]["type"] == "keyDown"
+    ]
+    assert [request["text"] for request in key_downs] == ["!", "@", "#"]
+    assert all(request.get("windowsVirtualKeyCode") is None for request in key_downs)

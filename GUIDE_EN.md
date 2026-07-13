@@ -8,7 +8,7 @@
 python -m pip install selenodriver
 ```
 
-Version 0.1.3 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.1.4 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
 
 ## Quick Start
 
@@ -133,7 +133,7 @@ Plain text from `WebElement.send_keys()` and `ActionChains.send_keys()` is also 
 element.send_keys("abc")       # default: real CDP keyboard input
 element.send_keys_js("abc")    # explicit JavaScript value mutation
 element.send_keys("한글", mode="auto")  # Korean uses Input.insertText
-element.send_keys("한글", mode="jamo")  # 2-beolsik jamo key events
+element.send_keys("한글", mode="jamo")  # CDP IME composition events
 element.send_keys("abc", delay=0.05)     # delay between events
 ```
 
@@ -151,9 +151,9 @@ ActionChains(driver).send_keys_to_element(
 ).perform()
 ```
 
-`auto` uses CDP key events for ASCII and `Input.insertText` for Hangul and emoji. `key` attempts key events for ASCII/Hangul and uses text insertion for emoji. `text` sends completed text through `Input.insertText`, while `jamo` converts Hangul to 2-beolsik key sequences.
+`auto` uses CDP key events for ASCII and `Input.insertText` for Hangul and emoji. `key` attempts key events for ASCII/Hangul and uses text insertion for emoji. `text` sends completed text through `Input.insertText`, while `jamo` composes and commits Hangul through renderer-scoped CDP `Input.imeSetComposition`.
 
-With `jamo`, `focus=True` clicks the element before checking Windows IME state. On non-Windows systems or when IME detection fails, the complete string falls back to `Input.insertText`. Compound emoji are handled as graphemes in every mode.
+With `jamo`, `focus=True` clicks the element through CDP before input. It does not depend on Windows foreground focus, OS Korean/English state, or `pyautogui`, and uses the same path on other operating systems and mobile emulation. Compound emoji are handled as graphemes in every mode.
 
 Check the package version:
 
@@ -168,13 +168,13 @@ Input modes:
 - `auto`: uses `Input.insertText` for Hangul/Unicode and key events for other text
 - `key`: attempts `keyDown`/`keyUp` for ASCII/Hangul and uses `Input.insertText` for emoji and compound Unicode
 - `text`: sends all values through `Input.insertText`
-- `jamo`: decomposes Hangul syllables and converts them to the original app's 2-beolsik Latin key mapping
+- `jamo`: emits and commits CDP IME composition events for Hangul while using key events for ASCII
 
-`jamo` mode requires the operating system or browser input state to be configured for Korean 2-beolsik input. For general web input reliability, prefer `auto`. `ActionChains.send_keys()` and `send_keys_to_element()` support the same mode and `delay` arguments.
+`jamo` mode is intended for fields that react to real composition events and does not change the operating system input language. Prefer the lighter `auto` mode for simple value input. `ActionChains.send_keys()` and `send_keys_to_element()` support the same mode and `delay` arguments.
 
 Emoji and compound emoji use `Input.insertText` in every mode. ZWJ family emoji, skin-tone modifiers, and variation selectors are grouped as grapheme clusters so the sequence is not split into unrelated key events.
 
-On Windows, `jamo` mode uses ctypes-based `SendInput` first. If that call fails and `pyautogui` is installed, it is used as an optional fallback; `pyautogui` is not a required selenodriver dependency. On non-Windows systems or when IME detection is unavailable, the whole input falls back to `Input.insertText`.
+Since 0.1.4, `jamo` mode does not use Windows `SendInput` or `pyautogui`. Legacy helpers under `selenodriver.windows_ime` remain importable for 0.1.x compatibility but are not called by package input modes.
 
 Mouse, touch, offset clicks, drag operations, long press, key down/up, pauses, and element-focused input are available. This is not a complete W3C Actions implementation.
 

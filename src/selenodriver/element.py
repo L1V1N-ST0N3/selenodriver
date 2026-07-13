@@ -6,8 +6,8 @@ from typing import Any, Iterable
 
 from .by import By, locator_to_css
 from .exceptions import NoSuchElementException, TimeoutException
-from .hangul import split_input_runs, to_dubeolsik
-from .keys import dispatch_insert_text, dispatch_key_press, dispatch_text, is_special_key, split_key_sequence
+from .hangul import split_input_runs
+from .keys import dispatch_ime_text, dispatch_insert_text, dispatch_key_press, dispatch_text, is_special_key, split_key_sequence
 
 
 class WebElement:
@@ -88,7 +88,7 @@ class WebElement:
         self._wait_until_ready_for_action()
         if focus is None:
             focus = mode == "jamo"
-        if mode == "jamo" and focus and self._driver is not None:
+        if focus:
             self.mouse_click()
         focus_method = getattr(self._raw, "focus", None)
         if focus_method is not None and callable(focus_method):
@@ -124,58 +124,13 @@ class WebElement:
                 dispatch_insert_text(self._driver.raw_tab, self._runner, part, delay=delay)
 
     def _send_jamo_chunk(self, chunk: str, *, delay: float) -> None:
-        from .windows_ime import (
-            ensure_english_input,
-            ensure_korean_input,
-            is_korean_input,
-            is_windows,
-            send_os_text,
-        )
-
-        if not is_windows():
-            dispatch_insert_text(self._driver.raw_tab, self._runner, chunk, delay=delay)
-            return
-        original_state = is_korean_input()
-        if original_state is None:
-            dispatch_insert_text(self._driver.raw_tab, self._runner, chunk, delay=delay)
-            return
-        os_input_started = False
-        try:
-            for kind, part in split_input_runs(chunk):
-                if kind == "hangul":
-                    if not ensure_korean_input():
-                        raise RuntimeError("Unable to activate Korean IME")
-                    os_input_started = True
-                    send_os_text(to_dubeolsik(part), delay=delay)
-                elif kind == "key":
-                    if not ensure_english_input():
-                        raise RuntimeError("Unable to activate English IME")
-                    os_input_started = True
-                    send_os_text(part, delay=delay)
-                else:
-                    dispatch_insert_text(self._driver.raw_tab, self._runner, part, delay=delay)
-        except (OSError, RuntimeError, ValueError):
-            if original_state is not None:
-                try:
-                    if original_state:
-                        ensure_korean_input()
-                    else:
-                        ensure_english_input()
-                except Exception:
-                    pass
-            if not os_input_started:
-                dispatch_insert_text(self._driver.raw_tab, self._runner, chunk, delay=delay)
-                return
-            raise
-        finally:
-            if original_state is not None:
-                try:
-                    if original_state:
-                        ensure_korean_input()
-                    else:
-                        ensure_english_input()
-                except Exception:
-                    pass
+        for kind, part in split_input_runs(chunk):
+            if kind == "hangul":
+                dispatch_ime_text(self._driver.raw_tab, self._runner, part, delay=delay)
+            elif kind == "key":
+                dispatch_text(self._driver.raw_tab, self._runner, part, delay=delay)
+            else:
+                dispatch_insert_text(self._driver.raw_tab, self._runner, part, delay=delay)
 
     def send_keys_js(self, *value: object) -> None:
         """Append text through JavaScript; use send_keys() for real keyboard input."""

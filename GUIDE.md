@@ -61,7 +61,7 @@ from selenodriver.webdriver.support import expected_conditions as EC
 
 ## 버전과 의존성
 
-현재 패키지 버전은 `0.1.3`입니다.
+현재 패키지 버전은 `0.1.4`입니다.
 
 패키지 요구사항:
 
@@ -74,7 +74,7 @@ nodriver >= 0.39
 
 ```toml
 [project]
-version = "0.1.3"
+version = "0.1.4"
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",
@@ -542,7 +542,7 @@ ActionChains(driver).key_down(Keys.CONTROL).send_keys("v").key_up(Keys.CONTROL).
 element.send_keys("abc")       # 기본값: 실제 CDP 키 입력
 element.send_keys_js("abc")    # 명시적 JS value 변경
 element.send_keys("한글", mode="auto")  # 한글은 Input.insertText
-element.send_keys("한글", mode="jamo")  # 두벌식 자모 키 이벤트
+element.send_keys("한글", mode="jamo")  # CDP IME composition 이벤트
 element.send_keys("abc", delay=0.05)     # 이벤트 사이 지연
 ```
 
@@ -560,9 +560,9 @@ ActionChains(driver).send_keys_to_element(
 ).perform()
 ```
 
-`auto`는 ASCII를 CDP key event로, 한글과 emoji를 `Input.insertText`로 처리합니다. `key`는 ASCII/한글 key event를 시도하고 emoji는 text 삽입으로 처리합니다. `text`는 완성 문자열 전체를 `Input.insertText`로 처리하며, `jamo`는 한글을 두벌식 키 시퀀스로 변환합니다.
+`auto`는 ASCII를 CDP key event로, 한글과 emoji를 `Input.insertText`로 처리합니다. `key`는 ASCII/한글 key event를 시도하고 emoji는 text 삽입으로 처리합니다. `text`는 완성 문자열 전체를 `Input.insertText`로 처리하며, `jamo`는 한글을 renderer-scoped CDP `Input.imeSetComposition`으로 조합한 뒤 확정합니다.
 
-`jamo` mode의 `focus=True`는 element를 실제 mouse click으로 focus한 뒤 Windows IME 상태를 확인합니다. Windows가 아니거나 IME 감지가 실패하면 전체 문자열을 `Input.insertText`로 fallback합니다. 복합 emoji는 모든 mode에서 grapheme 단위로 처리됩니다.
+`jamo` mode의 `focus=True`는 element를 CDP mouse click으로 focus합니다. 입력은 OS 한/영 상태, Windows 전면 창, `pyautogui`에 의존하지 않으며 다른 운영체제와 모바일 emulation에서도 같은 방식으로 동작합니다. 복합 emoji는 모든 mode에서 grapheme 단위로 처리됩니다.
 
 패키지 버전 확인:
 
@@ -577,13 +577,13 @@ print(selenodriver.__version__)
 - `auto`: 한글/Unicode 텍스트는 `Input.insertText`, 나머지는 key event
 - `key`: ASCII/한글 입력은 `keyDown`/`keyUp`을 시도하고 emoji/복합 Unicode는 `Input.insertText`
 - `text`: 모든 값을 `Input.insertText`로 전달
-- `jamo`: 한글 음절을 자모로 분해한 뒤 원본 앱의 두벌식 영문 키 매핑으로 변환
+- `jamo`: 한글 음절마다 CDP IME composition 이벤트를 발생시키고 확정하며, ASCII는 key event로 처리
 
-`jamo` mode는 운영체제 또는 브라우저 입력 상태가 한글 두벌식으로 설정되어 있을 때 사용하는 특수 경로입니다. 일반적인 웹 input 안정성은 `auto`가 더 높습니다. `ActionChains.send_keys()`와 `send_keys_to_element()`도 같은 mode와 `delay` 인자를 지원합니다.
+`jamo` mode는 실제 composition 이벤트가 필요한 웹 입력창을 위한 경로입니다. 운영체제의 한/영 상태를 변경하지 않습니다. 단순 값 입력은 `auto`가 더 가볍고, composition 이벤트를 감지하는 사이트에는 `jamo`가 적합합니다. `ActionChains.send_keys()`와 `send_keys_to_element()`도 같은 mode와 `delay` 인자를 지원합니다.
 
 이모지와 복합 이모지는 mode와 관계없이 `Input.insertText`로 처리합니다. ZWJ 가족 이모지, 피부색 modifier, variation selector를 하나의 grapheme cluster로 묶어 중간 문자열이 분리되지 않도록 합니다.
 
-Windows의 `jamo` mode는 `ctypes` 기반 `SendInput`을 먼저 사용합니다. 호출 실패 시 `pyautogui`가 설치되어 있으면 선택적으로 fallback하며, `pyautogui`는 selenodriver의 필수 의존성이 아닙니다. Windows가 아니거나 IME 감지가 불가능하면 입력 전체를 `Input.insertText`로 처리합니다.
+0.1.4부터 `jamo` mode는 Windows `SendInput`과 `pyautogui`를 사용하지 않습니다. `selenodriver.windows_ime`의 기존 helper는 0.1.x 호환 목적으로만 남아 있으며 패키지 입력 경로에서는 호출되지 않습니다.
 
 액션은 체인에 쌓이고, `perform()` 호출 시 순서대로 실행됩니다.
 

@@ -160,7 +160,10 @@ def dispatch_key(tab: Any, runner: Any, value: str, type_: str = "keyDown", modi
 
     definition = KEY_DEFINITIONS.get(value)
     if definition is None:
-        definition = KeyDefinition(value, None, ord(value) if len(value) == 1 else None, value if len(value) == 1 else None)
+        virtual_key = None
+        if len(value) == 1 and value.isascii() and value.isalnum():
+            virtual_key = ord(value.upper())
+        definition = KeyDefinition(value, None, virtual_key, value if len(value) == 1 else None)
     event = cdp.input_.dispatch_key_event(
         type_,
         text=definition.text if type_ == "keyDown" else None,
@@ -197,6 +200,21 @@ def dispatch_insert_text(tab: Any, runner: Any, value: str, delay: float = 0.0) 
 
     clusters = list(iter_graphemes(value))
     for index, cluster in enumerate(clusters):
+        runner.run(tab.send(cdp.input_.insert_text(cluster)))
+        if delay > 0 and index < len(clusters) - 1:
+            time.sleep(delay)
+
+
+def dispatch_ime_text(tab: Any, runner: Any, value: str, delay: float = 0.0) -> None:
+    """Compose and commit text through the renderer's CDP IME context."""
+    import time
+    from nodriver import cdp
+    from .hangul import iter_graphemes
+
+    clusters = list(iter_graphemes(value))
+    for index, cluster in enumerate(clusters):
+        selection = len(cluster.encode("utf-16-le")) // 2
+        runner.run(tab.send(cdp.input_.ime_set_composition(cluster, selection, selection)))
         runner.run(tab.send(cdp.input_.insert_text(cluster)))
         if delay > 0 and index < len(clusters) - 1:
             time.sleep(delay)

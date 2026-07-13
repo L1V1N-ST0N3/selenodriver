@@ -15,6 +15,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [0.1.1 업데이트 내역 / Release Notes](#011-업데이트-내역--release-notes)
 - [0.1.2 업데이트 내역 / Release Notes](#012-업데이트-내역--release-notes)
 - [0.1.3 업데이트 내역 / Release Notes](#013-업데이트-내역--release-notes)
+- [0.1.4 업데이트 내역 / Release Notes](#014-업데이트-내역--release-notes)
 - [빠른 시작 / Quick Start](#빠른-시작--quick-start)
 - [클릭과 입력 방식 / Click and Input Modes](#클릭과-입력-방식--click-and-input-modes)
 - [좌표 클릭 / Offset and Randomized Clicks](#좌표-클릭--랜덤-위치-클릭--offset-and-randomized-clicks)
@@ -48,7 +49,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.1.3
+selenodriver 0.1.4
 ```
 
 The version is also available from Python:
@@ -108,6 +109,20 @@ Version `0.1.1` improves Selenium compatibility and fixes browser-state issues f
 - **CDP wrapper 확장 / CDP wrapper expansion:** Network UA/header와 Emulation 명령을 `execute_cdp_cmd()`에서 지원합니다. / Adds common Network and Emulation commands to `execute_cdp_cmd()`.
 - **쿠키 fallback 개선 / Cookie fallback:** deprecated Network 전체 쿠키 명령 대신 Storage domain fallback을 사용합니다. / Uses the Storage domain for the browser-wide cookie fallback.
 - **테스트·CI / Tests and CI:** 실제 브라우저 smoke test, Python matrix CI, 공개 `__version__`을 추가했습니다. / Adds opt-in browser smoke tests, Python matrix CI, and a public `__version__`.
+
+## 0.1.4 업데이트 내역 / Release Notes
+
+- **CDP IME 조합 입력 / CDP IME composition:** `jamo` mode가 전역 Windows `SendInput` 대신 포커스된 renderer의 `Input.imeSetComposition`을 사용합니다. 한글 composition 이벤트를 발생시키면서 OS 한/영 상태와 전면 창에 의존하지 않습니다. / `jamo` mode now targets the focused renderer with `Input.imeSetComposition` instead of global Windows `SendInput`, producing Hangul composition events without depending on OS input state or foreground-window focus.
+- **혼합 문자열 / Mixed text:** 한글, 영문, 숫자, 특수문자, emoji 및 ZWJ 복합 emoji가 입력 순서대로 처리됩니다. / Hangul, Latin text, numbers, punctuation, emoji, and ZWJ emoji sequences retain their input order.
+- **문장부호 키 수정 / Punctuation fix:** `!`와 `#` 등이 PageUp/End Windows virtual key로 오인되던 문제를 수정했습니다. / Fixes punctuation such as `!` and `#` being misinterpreted as PageUp or End virtual keys.
+- **PC·모바일 공통 / Desktop and mobile:** 동일한 renderer-scoped 입력 경로를 데스크톱과 모바일 emulation에서 사용합니다. / Uses the same renderer-scoped input path on desktop and mobile emulation.
+- **호환성 / Compatibility:** `windows_ime` helper는 0.1.x 호환을 위해 남겨 두지만 패키지 입력 mode에서는 더 이상 사용하지 않습니다. / Legacy `windows_ime` helpers remain importable for 0.1.x compatibility but are no longer used by package input modes.
+- **검증 / Verification:** input, textarea, contenteditable, ActionChains 및 모바일용 실제 Chrome smoke coverage를 추가했습니다. / Adds real-Chrome smoke coverage for input, textarea, contenteditable, ActionChains, and mobile emulation.
+
+```python
+field.send_keys("한글abc123!@😀", mode="jamo", delay=0.03)
+field.send_keys(Keys.ENTER)
+```
 
 ## 빠른 시작 / Quick Start
 

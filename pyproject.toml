@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "selenodriver"
-version = "0.1.3"
+version = "0.1.4"
 description = "Selenium-style synchronous WebDriver API powered by Python nodriver."
 readme = "README.md"
 license = { file = "LICENSE" }

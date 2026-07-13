@@ -4,8 +4,8 @@ from collections.abc import Callable
 from typing import Any
 
 from .element import WebElement
-from .hangul import split_input_runs, to_dubeolsik
-from .keys import Keys, dispatch_insert_text, dispatch_key, dispatch_key_press, dispatch_text, is_special_key, split_key_sequence
+from .hangul import split_input_runs
+from .keys import Keys, dispatch_ime_text, dispatch_insert_text, dispatch_key, dispatch_key_press, dispatch_text, is_special_key, split_key_sequence
 
 
 _MODIFIER_BITS = {Keys.ALT: 1, Keys.CONTROL: 2, Keys.META: 4, Keys.COMMAND: 4, Keys.SHIFT: 8}
@@ -285,7 +285,7 @@ class ActionChains:
                 elif mode == "jamo":
                     for kind, part in split_input_runs(chunk):
                         if kind == "hangul":
-                            dispatch_text(self._driver.raw_tab, self._driver._runner, to_dubeolsik(part), delay=delay)
+                            dispatch_ime_text(self._driver.raw_tab, self._driver._runner, part, delay=delay)
                         elif kind == "key":
                             dispatch_text(self._driver.raw_tab, self._driver._runner, part, delay=delay)
                         else:

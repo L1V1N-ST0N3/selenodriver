@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+"""Legacy Windows OS-input helpers.
+
+These functions remain importable for 0.1.x compatibility. Selenodriver's input
+modes no longer use global Windows IME state or SendInput; ``mode="jamo"`` uses
+the renderer-scoped CDP IME composition API instead.
+"""
+
 import ctypes
 import os
 import time

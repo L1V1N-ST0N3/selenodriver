@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from selenodriver import By, Chrome, MobileEmulationExtension
+from selenodriver import ActionChains, By, Chrome, MobileEmulationExtension
 
 
 pytestmark = pytest.mark.smoke
@@ -49,3 +49,46 @@ def test_mobile_navigation_script_and_input(mobile_driver):
     field.send_keys("mobile")
 
     assert mobile_driver.execute_script("return arguments[0].value", field) == "mobile"
+
+
+@pytest.mark.parametrize(
+    ("markup", "attribute"),
+    [
+        ("<input id='field'>", "value"),
+        ("<textarea id='field'></textarea>", "value"),
+        ("<div id='field' contenteditable='true'></div>", "textContent"),
+    ],
+)
+def test_desktop_ime_input_targets_editable_elements(desktop_driver, markup, attribute):
+    desktop_driver.get("data:text/html;charset=utf-8," + markup)
+    field = desktop_driver.find_element(By.ID, "field")
+
+    field.send_keys("한글abc123!@😀", mode="jamo", delay=0.001)
+
+    assert desktop_driver.execute_script(
+        f"return arguments[0].{attribute}", field
+    ) == "한글abc123!@😀"
+
+
+def test_action_chains_ime_input(desktop_driver):
+    desktop_driver.get("data:text/html;charset=utf-8,<textarea id='field'></textarea>")
+    field = desktop_driver.find_element(By.ID, "field")
+
+    ActionChains(desktop_driver).send_keys_to_element(
+        field, "가족👨‍👩‍👧‍👦테스트", mode="jamo", delay=0.001
+    ).perform()
+
+    assert desktop_driver.execute_script(
+        "return arguments[0].value", field
+    ) == "가족👨‍👩‍👧‍👦테스트"
+
+
+def test_mobile_ime_mixed_input(mobile_driver):
+    mobile_driver.get("data:text/html;charset=utf-8,<textarea id='field'></textarea>")
+    field = mobile_driver.find_element(By.ID, "field")
+
+    field.send_keys("모바일abc123!@😀", mode="jamo", delay=0.001)
+
+    assert mobile_driver.execute_script(
+        "return arguments[0].value", field
+    ) == "모바일abc123!@😀"
