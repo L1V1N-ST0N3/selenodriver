@@ -122,7 +122,7 @@ class Chrome:
             self._tab = result
             self._top_tab = result
             self._install_dialog_handler()
-        self._wait_for_page_load()
+        self._wait_for_page_load_or_tolerate()
         self._notify_extensions("after_navigate", url)
         self._notify_extensions("on_context_changed")
 
@@ -208,24 +208,18 @@ class Chrome:
 
     def back(self) -> None:
         self._runner.run(self._tab.back())
-        self._wait_for_page_load()
+        self._wait_for_page_load_or_tolerate()
         self._notify_extensions("on_context_changed")
 
     def forward(self) -> None:
         self._runner.run(self._tab.forward())
-        self._wait_for_page_load()
+        self._wait_for_page_load_or_tolerate()
         self._notify_extensions("on_context_changed")
 
     def refresh(self) -> None:
         self._notify_extensions("before_navigate", self.current_url)
         self._runner.run(self._tab.reload())
-        try:
-            self._wait_for_page_load()
-        except TimeoutException:
-            if not self._tolerate_page_load_timeout:
-                raise
-            if not self.find_elements(By.TAG_NAME, "body"):
-                raise
+        self._wait_for_page_load_or_tolerate()
         self._notify_extensions("after_navigate", self.current_url)
         self._notify_extensions("on_context_changed")
 
@@ -1016,6 +1010,17 @@ class Chrome:
             if time.monotonic() >= deadline:
                 raise TimeoutException(f"Timed out after {self._page_load_timeout} seconds waiting for page load")
             time.sleep(0.05)
+
+    def _wait_for_page_load_or_tolerate(self) -> bool:
+        try:
+            self._wait_for_page_load()
+            return True
+        except TimeoutException:
+            if not self._tolerate_page_load_timeout:
+                raise
+            if not self.find_elements(By.TAG_NAME, "body"):
+                raise
+            return False
 
     def _window_handle_for_tab(self, tab: Any) -> str:
         target = getattr(tab, "target", None)

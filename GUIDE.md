@@ -61,7 +61,7 @@ from selenodriver.webdriver.support import expected_conditions as EC
 
 ## 버전과 의존성
 
-현재 패키지 버전은 `0.2.1`입니다.
+현재 패키지 버전은 `0.2.2`입니다.
 
 패키지 요구사항:
 
@@ -74,7 +74,7 @@ nodriver >= 0.39
 
 ```toml
 [project]
-version = "0.2.1"
+version = "0.2.2"
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",

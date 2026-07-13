@@ -23,6 +23,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [0.1.9 업데이트 내역 / Release Notes](#019-업데이트-내역--release-notes)
 - [0.2.0 업데이트 내역 / Release Notes](#020-업데이트-내역--release-notes)
 - [0.2.1 업데이트 내역 / Release Notes](#021-업데이트-내역--release-notes)
+- [0.2.2 업데이트 내역 / Release Notes](#022-업데이트-내역--release-notes)
 - [빠른 시작 / Quick Start](#빠른-시작--quick-start)
 - [클릭과 입력 방식 / Click and Input Modes](#클릭과-입력-방식--click-and-input-modes)
 - [좌표 클릭 / Offset and Randomized Clicks](#좌표-클릭--랜덤-위치-클릭--offset-and-randomized-clicks)
@@ -56,7 +57,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.2.1
+selenodriver 0.2.2
 ```
 
 The version is also available from Python:
@@ -175,6 +176,11 @@ field.send_keys(Keys.ENTER)
 
 - **누락 attribute 처리 / Missing attribute handling:** `get_attribute()`가 실제로 존재하지 않는 attribute를 조회할 때 nodriver의 `get_js_attributes()` fallback에서 `json.loads(None)` 오류를 내지 않고 Selenium과 같이 `None`을 반환합니다. / `get_attribute()` now returns `None` for a genuinely missing attribute instead of reaching nodriver's fragile `get_js_attributes()` fallback and raising from `json.loads(None)`.
 - **동적 펼치기 버튼 / Dynamic expand controls:** `aria-expanded`가 없는 일회성 `펼쳐보기` 버튼을 정상적으로 판별할 수 있습니다. `aria-expanded="false"`/`"true"` 토글 버튼 동작은 그대로 유지됩니다. / One-shot expand controls without `aria-expanded` can now be detected safely while regular `false`/`true` toggle controls retain their behavior.
+
+## 0.2.2 업데이트 내역 / Release Notes
+
+- **navigation timeout 허용 / Tolerant navigation timeouts:** `tolerate_page_load_timeout=True`가 `refresh()`뿐 아니라 `get()`, `back()`, `forward()`에도 동일하게 적용됩니다. 제한 시간이 지나도 문서에 `body`가 있으면 동적 리소스가 계속 로딩되는 사용 가능한 페이지로 판단해 진행합니다. / `tolerate_page_load_timeout=True` now applies consistently to `get()`, `back()`, and `forward()` as well as `refresh()`. A timed-out navigation continues only when the document has a usable `body`.
+- **엄격 모드 유지 / Strict mode preserved:** 옵션이 꺼져 있거나 `body`가 없으면 기존처럼 `TimeoutException`을 발생시킵니다. navigation이 허용된 경우 extension의 `after_navigate`와 context hook도 정상 실행됩니다. / The default strict behavior still raises `TimeoutException` when tolerance is disabled or no document body exists, and extension lifecycle hooks continue after an accepted timeout.
 
 ## 빠른 시작 / Quick Start
 

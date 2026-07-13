@@ -8,7 +8,11 @@
 python -m pip install selenodriver
 ```
 
-Version 0.2.1 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.2.2 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+
+### Version 0.2.2
+
+Version 0.2.2 applies `tolerate_page_load_timeout=True` consistently to `get()`, `back()`, `forward()`, and `refresh()`. A timeout is accepted only when the page already has a usable `body`; strict mode and documents without a body still raise `TimeoutException`.
 
 ### Version 0.2.1
 

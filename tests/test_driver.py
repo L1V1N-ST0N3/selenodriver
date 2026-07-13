@@ -558,6 +558,62 @@ def test_get_can_skip_page_load_wait():
     assert browser.last_url == "https://example.test"
 
 
+def test_get_can_tolerate_page_load_timeout_when_body_exists():
+    tab = FakeTab()
+    tab.ready_state = "loading"
+    tab.queries["body"] = [FakeElement(tag_name="body")]
+    browser = FakeBrowser(tab)
+    extension = FakeExtension()
+    driver = Chrome(
+        browser=browser,
+        tab=tab,
+        runner=ImmediateRunner(),
+        extensions=[extension],
+        page_load_timeout=0,
+        tolerate_page_load_timeout=True,
+    )
+
+    driver.get("https://example.test")
+
+    assert browser.last_url == "https://example.test"
+    assert ("after", "https://example.test") in extension.events
+
+
+def test_get_does_not_tolerate_page_load_timeout_without_body():
+    tab = FakeTab()
+    tab.ready_state = "loading"
+    browser = FakeBrowser(tab)
+    driver = Chrome(
+        browser=browser,
+        tab=tab,
+        runner=ImmediateRunner(),
+        page_load_timeout=0,
+        tolerate_page_load_timeout=True,
+    )
+
+    with pytest.raises(TimeoutException):
+        driver.get("https://example.test")
+
+
+def test_history_navigation_can_tolerate_page_load_timeout():
+    tab = FakeTab()
+    tab.ready_state = "loading"
+    tab.queries["body"] = [FakeElement(tag_name="body")]
+    browser = FakeBrowser(tab)
+    driver = Chrome(
+        browser=browser,
+        tab=tab,
+        runner=ImmediateRunner(),
+        page_load_timeout=0,
+        tolerate_page_load_timeout=True,
+    )
+
+    driver.back()
+    driver.forward()
+
+    assert tab.navigation_calls == ["back", "forward"]
+
+
 def test_options_to_nodriver_kwargs():
     options = Options()
     options.add_argument("--no-first-run")
