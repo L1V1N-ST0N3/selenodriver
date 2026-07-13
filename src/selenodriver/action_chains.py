@@ -228,8 +228,10 @@ class ActionChains:
         return self
 
     def send_keys(self, *keys_to_send: object, delay: float = 0.0, mode: str = "auto") -> "ActionChains":
-        if mode not in {"auto", "key", "text", "jamo"}:
-            raise ValueError("mode must be 'auto', 'key', 'text', or 'jamo'")
+        if mode not in {"auto", "key", "text", "ime", "jamo"}:
+            raise ValueError("mode must be 'auto', 'key', 'text', 'ime', or 'jamo'")
+        if mode == "jamo":
+            mode = "ime"
         self._actions.append(lambda: self._send_keys(*keys_to_send, delay=delay, mode=mode))
         return self
 
@@ -275,7 +277,30 @@ class ActionChains:
         self._actions.append(_action)
         return self
 
+    def scroll_to_element(self, element: WebElement) -> "ActionChains":
+        self._actions.append(lambda: element.scroll_into_view(False))
+        return self
+
+    def scroll_by_amount(self, delta_x: int, delta_y: int) -> "ActionChains":
+        self._actions.append(lambda: self._driver.scroll_by(delta_x, delta_y))
+        return self
+
+    def scroll_from_origin(self, scroll_origin: Any, delta_x: int, delta_y: int) -> "ActionChains":
+        def _action() -> None:
+            origin = getattr(scroll_origin, "origin", None)
+            if isinstance(origin, WebElement):
+                origin.scroll_into_view()
+            self._driver.scroll_by(delta_x, delta_y)
+
+        self._actions.append(_action)
+        return self
+
     def _send_keys(self, *values: object, delay: float = 0.0, mode: str = "auto") -> None:
+        self._driver._record_input(
+            mode=mode,
+            text_length=sum(len(str(value)) for value in values),
+            source="ActionChains.send_keys",
+        )
         for chunk in split_key_sequence(*values):
             if is_special_key(chunk):
                 dispatch_key_press(self._driver.raw_tab, self._driver._runner, chunk, self._modifier_mask())
@@ -290,7 +315,7 @@ class ActionChains:
                             dispatch_text(self._driver.raw_tab, self._driver._runner, part, delay=delay)
                 elif mode == "key" or self._modifiers:
                     dispatch_text(self._driver.raw_tab, self._driver._runner, chunk, delay=delay)
-                elif mode == "jamo":
+                elif mode == "ime":
                     for kind, part in split_input_runs(chunk):
                         if kind == "hangul":
                             dispatch_ime_text(self._driver.raw_tab, self._driver._runner, part, delay=delay)

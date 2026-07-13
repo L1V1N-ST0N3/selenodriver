@@ -21,6 +21,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [0.1.7 업데이트 내역 / Release Notes](#017-업데이트-내역--release-notes)
 - [0.1.8 업데이트 내역 / Release Notes](#018-업데이트-내역--release-notes)
 - [0.1.9 업데이트 내역 / Release Notes](#019-업데이트-내역--release-notes)
+- [0.2.0 업데이트 내역 / Release Notes](#020-업데이트-내역--release-notes)
 - [빠른 시작 / Quick Start](#빠른-시작--quick-start)
 - [클릭과 입력 방식 / Click and Input Modes](#클릭과-입력-방식--click-and-input-modes)
 - [좌표 클릭 / Offset and Randomized Clicks](#좌표-클릭--랜덤-위치-클릭--offset-and-randomized-clicks)
@@ -54,7 +55,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.1.9
+selenodriver 0.2.0
 ```
 
 The version is also available from Python:
@@ -158,6 +159,16 @@ field.send_keys(Keys.ENTER)
 - **비동기 JavaScript / Async JavaScript:** Selenium 호환 `execute_async_script(script, *args)`를 추가했습니다. script의 마지막 인자로 전달되는 완료 callback이 호출될 때까지 기다린 뒤 첫 번째 callback 값을 반환합니다. / Adds Selenium-compatible `execute_async_script(script, *args)`, waiting for the final completion callback and returning its first value.
 - **비동기 timeout / Async timeout:** `set_script_timeout()` 값으로 callback 대기 시간을 제한하고 초과 시 `TimeoutException`을 발생시킵니다. 동기 JavaScript 오류도 `SelenoDriverException`으로 전달됩니다. / Uses `set_script_timeout()` to limit callback wait time, raises `TimeoutException` on expiry, and propagates synchronous JavaScript failures as `SelenoDriverException`.
 - **CDP 수명 관리 / CDP lifecycle:** 동기·비동기 script가 argument 변환과 실행별 object group 해제 로직을 공유합니다. / Shares argument conversion and per-execution object-group cleanup across synchronous and asynchronous scripts.
+
+## 0.2.0 업데이트 내역 / Release Notes
+
+- **랜덤 클릭 / Randomized clicks:** `WebElement.random_click()`과 `driver.click_element_random()`을 추가했습니다. element 내부 안전 margin 좌표, overlay 확인, touch/mouse/JS fallback, 검증 callback 및 `ClickResult`를 지원합니다. / Adds safe in-element randomized coordinates, overlay checks, touch/mouse/JS fallbacks, verification callbacks, and structured `ClickResult` output.
+- **좌표 호환 / Coordinate compatibility:** `driver.click_element_offset()`과 `driver.viewport_point_to_screen()`을 정식 API로 제공합니다. / Promotes element-relative offset clicks and viewport-to-screen conversion to public APIs.
+- **IME 명칭 / IME naming:** renderer-scoped CDP composition의 정식 mode를 `ime`로 추가했습니다. 기존 `jamo`는 호환 alias로 유지됩니다. / Adds `ime` as the official renderer-scoped CDP composition mode while retaining `jamo` as a compatibility alias.
+- **실패 진단 / Failure diagnostics:** `driver.capture_diagnostics()`가 URL, window, 안전한 element metadata, 마지막 클릭·입력 방식, extension 오류와 선택적 screenshot/redacted HTML을 수집합니다. 입력 문자열·쿠키·폼 값은 기록하지 않습니다. / Adds privacy-conscious diagnostics with optional screenshots and redacted HTML without recording input text, cookies, or form values.
+- **Selenium 호환 / Selenium compatibility:** 일반 element metadata, `print_page()`, selection/frame/combinator expected conditions, wheel scroll methods, common exception names, `Options.to_capabilities()` 및 공개 `update_targets()`를 추가했습니다. / Adds common element metadata, PDF printing, expected conditions, wheel scrolling, exception names, options compatibility, and public target refresh.
+- **모바일 Client Hints / Mobile Client Hints:** mobile metadata에서 `formFactors=["Mobile"]`을 전달합니다. / Sends `formFactors=["Mobile"]` in supported mobile user-agent metadata.
+- **범위 / Scope:** Selenium BiDi, FedCM, virtual authenticator 및 downloadable-files API는 구현 범위가 아니며 지원하는 것처럼 동작하지 않습니다. / Selenium BiDi, FedCM, virtual-authenticator, and downloadable-files APIs remain explicitly out of scope.
 
 ## 빠른 시작 / Quick Start
 
@@ -323,9 +334,9 @@ Implemented:
 - common expected conditions
 - locators: CSS selector, XPath, id, name, tag name, class name
 - element actions/properties: `click`, `mouse_click`, `touch_click`, `js_click`, `submit`, `scroll_into_view`, `shadow_root`, `send_keys`, `clear`, `text`, `tag_name`, `get_attribute`, `get_dom_attribute`, `get_property`, `value_of_css_property`, `is_selected`, `size`, `location`, `rect`
-- browser helpers: `get`, `back`, `forward`, `refresh`, extension hooks, init scripts, `auto_wait`, `implicitly_wait`, `set_script_timeout`, `timeouts`, `session_id`, `capabilities`, window size/position, legacy find aliases, `find_element`, `find_element_location`, `find_element_absolute_location`, `find_elements`, `execute_script`, `execute_async_script`, `send_cdp`, `execute_cdp_cmd`, `scroll_to`, `scroll_by`, `touch_scroll_by`, `touch_scroll_to`, `page_source`, `title`, `current_url`, `current_window_handle`, `window_handles`, `switch_to.window`, `switch_to.frame`, `switch_to.active_element`, cookies, `save_screenshot`, `close`, `quit`
+- browser helpers: `get`, `back`, `forward`, `refresh`, extension hooks, init scripts, `auto_wait`, randomized clicks, diagnostics, `implicitly_wait`, `set_script_timeout`, `timeouts`, `session_id`, `capabilities`, PDF printing, window size/position, legacy find aliases, `find_element`, `find_elements`, `execute_script`, `execute_async_script`, `send_cdp`, `execute_cdp_cmd`, scrolling, target refresh, page/window properties, frame/alert switching, cookies, screenshots, `close`, `quit`
 - action chains: `click`, `touch_click`, `double_click`, `double_tap`, `context_click`, `move_to_element`, `move_to_element_with_offset`, `touch_move_to_element_with_offset`, `move_by_offset`, `drag_and_drop`, `drag_and_drop_by_offset`, `touch_drag_and_drop`, `touch_drag_by_offset`, `click_and_hold`, `long_press`, `release`, `send_keys`, `send_keys_to_element`, `key_down`, `key_up`, `pause`
-- input modes: `WebElement.send_keys()` uses CDP keyboard events by default; `WebElement.send_keys_js()` is available when JavaScript value mutation is explicitly required. The same CDP path works with desktop and mobile emulation.
+- input modes: `auto`, `key`, `text`, and official `ime`; `jamo` remains an alias for `ime`. `WebElement.send_keys_js()` is available only when JavaScript value mutation is explicitly required.
 - expected conditions: `presence_of_element_located`, `visibility_of_element_located`, `element_to_be_clickable`, `invisibility_of_element_located`, `alert_is_present`, `title_is`, `title_contains`, `url_contains`, `url_to_be`, `url_matches`, text checks, and window count checks
 
 더 자세한 사용법은 [한국어 가이드](https://github.com/L1V1N-ST0N3/selenodriver/blob/master/GUIDE.md)와 [English guide](https://github.com/L1V1N-ST0N3/selenodriver/blob/master/GUIDE_EN.md)에 정리되어 있습니다.

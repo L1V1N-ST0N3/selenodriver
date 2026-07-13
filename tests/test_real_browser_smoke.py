@@ -1,3 +1,4 @@
+import base64
 import os
 
 import pytest
@@ -102,6 +103,74 @@ def test_mobile_ime_mixed_input(mobile_driver):
     assert mobile_driver.execute_script(
         "return arguments[0].value", field
     ) == "모바일abc123!@😀"
+
+
+def test_mobile_official_ime_mode(mobile_driver):
+    mobile_driver.get("data:text/html;charset=utf-8,<textarea id='field'></textarea>")
+    field = mobile_driver.find_element(By.ID, "field")
+
+    field.send_keys("한글English123😀", mode="ime", delay=0.001)
+
+    assert mobile_driver.execute_script(
+        "return arguments[0].value", field
+    ) == "한글English123😀"
+
+
+def test_mobile_random_touch_click_returns_diagnostics(mobile_driver):
+    mobile_driver.get(
+        "data:text/html,<button id='target' style='width:160px;height:60px' "
+        "onclick=\"this.dataset.clicked='yes'\">Target</button>"
+    )
+    button = mobile_driver.find_element(By.ID, "target")
+
+    result = button.random_click(input_type="touch", fallback=False)
+    snapshot = mobile_driver.capture_diagnostics(element=button)
+
+    assert button.get_attribute("data-clicked") == "yes"
+    assert result.method == "touch:random"
+    assert snapshot.last_click["method"] == "touch:random"
+
+
+def test_diagnostic_artifacts_redact_form_values(desktop_driver, tmp_path):
+    desktop_driver.get(
+        "data:text/html,<input id='input'><textarea id='textarea'></textarea>"
+        "<div id='editable' contenteditable='true'></div>"
+    )
+    desktop_driver.execute_script(
+        """
+        document.querySelector('#input').value = arguments[0];
+        document.querySelector('#textarea').value = arguments[0];
+        document.querySelector('#editable').textContent = arguments[0];
+        """,
+        "private-value",
+    )
+    screenshot = tmp_path / "failure.png"
+    html = tmp_path / "failure.html"
+
+    snapshot = desktop_driver.capture_diagnostics(
+        screenshot_path=screenshot,
+        html_path=html,
+    )
+
+    saved_html = html.read_text(encoding="utf-8")
+    assert snapshot.screenshot_path == str(screenshot)
+    assert screenshot.stat().st_size > 0
+    assert "private-value" not in saved_html
+    assert "[REDACTED]" in saved_html
+
+
+def test_desktop_print_page_and_common_element_metadata(desktop_driver):
+    desktop_driver.get("data:text/html,<button id='save' aria-label='Save'>Save</button>")
+    button = desktop_driver.find_element(By.ID, "save")
+
+    pdf = base64.b64decode(desktop_driver.print_page({"background": True}))
+
+    assert pdf.startswith(b"%PDF")
+    assert desktop_driver.name == "chrome"
+    assert button.parent is desktop_driver
+    assert button.session_id == desktop_driver.session_id
+    assert button.accessible_name == "Save"
+    assert button.aria_role in {"button", "Button"}
 
 
 def test_scrolled_mobile_touch_uses_viewport_coordinates(mobile_driver):

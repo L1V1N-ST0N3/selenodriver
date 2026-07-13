@@ -61,7 +61,7 @@ from selenodriver.webdriver.support import expected_conditions as EC
 
 ## 버전과 의존성
 
-현재 패키지 버전은 `0.1.9`입니다.
+현재 패키지 버전은 `0.2.0`입니다.
 
 패키지 요구사항:
 
@@ -74,7 +74,7 @@ nodriver >= 0.39
 
 ```toml
 [project]
-version = "0.1.9"
+version = "0.2.0"
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",
@@ -533,6 +533,7 @@ button.click()
 | `element.click(input_type="touch")` | touch | element 중앙 | 아니오 |
 | `element.touch_click()` | touch | element 중앙 | 아니오 |
 | `element.js_click()` | JS | 좌표 없음 | 예 |
+| `element.random_click()` | touch/mouse + fallback | element 내부 랜덤 | fallback 설정에 따라 |
 | `ActionChains(...).move_to_element_with_offset(...).click()` | mouse | element 중앙 + offset | 아니오 |
 | `ActionChains(...).touch_move_to_element_with_offset(...).touch_click()` | touch | element 중앙 + offset | 아니오 |
 
@@ -572,6 +573,31 @@ element.click(input_type="js")
 
 이 방식만 JS `el.click()`을 실행합니다. 좌표 기반 클릭이 아니므로 실제 마우스/터치 입력과는 다릅니다.
 
+### 랜덤 클릭
+
+```python
+result = element.random_click(input_type="touch", margin=0.125, fallback=True)
+print(result.method, result.x, result.y, result.attempts)
+
+result = driver.click_element_random(
+    element,
+    input_type="touch",
+    verify=lambda click: "complete" in driver.current_url,
+)
+```
+
+기본 fallback은 랜덤 touch, 중앙 touch, 중앙 mouse, JS 순서입니다. 클릭 지점이 다른 element에 가려졌는지 `elementFromPoint()`로 확인하며 `verify`가 `False`를 반환하면 다음 단계로 진행합니다. `driver.click_element_offset(element, x, y)`의 offset은 element 좌상단 기준입니다.
+
+브라우저 생성 시 모든 일반 `element.click()`을 랜덤화할 수도 있습니다.
+
+```python
+driver = Chrome(
+    randomize_clicks=True,
+    default_click_input="touch",
+    click_fallback=True,
+)
+```
+
 ## ActionChains
 
 ```python
@@ -594,7 +620,7 @@ ActionChains(driver).key_down(Keys.CONTROL).send_keys("v").key_up(Keys.CONTROL).
 element.send_keys("abc")       # 기본값: 실제 CDP 키 입력
 element.send_keys_js("abc")    # 명시적 JS value 변경
 element.send_keys("한글", mode="auto")  # 한글은 Input.insertText
-element.send_keys("한글", mode="jamo")  # CDP IME composition 이벤트
+element.send_keys("한글", mode="ime")   # CDP IME composition 이벤트
 element.send_keys("abc", delay=0.05)     # 이벤트 사이 지연
 ```
 
@@ -604,17 +630,17 @@ element.send_keys("abc", delay=0.05)     # 이벤트 사이 지연
 element.send_keys("hello 한글 😀", mode="auto")
 element.send_keys("hello", mode="key")
 element.send_keys("한글 😀", mode="text")
-element.send_keys("한글", mode="jamo", focus=True)
+element.send_keys("한글", mode="ime", focus=True)
 
 ActionChains(driver).send_keys("한글 😀", mode="auto", delay=0.05).perform()
 ActionChains(driver).send_keys_to_element(
-    element, "한글", mode="jamo", delay=0.05
+    element, "한글", mode="ime", delay=0.05
 ).perform()
 ```
 
-`auto`는 ASCII를 CDP key event로, 한글과 emoji를 `Input.insertText`로 처리합니다. `key`는 ASCII/한글 key event를 시도하고 emoji는 text 삽입으로 처리합니다. `text`는 완성 문자열 전체를 `Input.insertText`로 처리하며, `jamo`는 한글을 renderer-scoped CDP `Input.imeSetComposition`으로 조합한 뒤 확정합니다.
+`auto`는 ASCII를 CDP key event로, 한글과 emoji를 `Input.insertText`로 처리합니다. `key`는 ASCII/한글 key event를 시도하고 emoji는 text 삽입으로 처리합니다. `text`는 완성 문자열 전체를 `Input.insertText`로 처리하며, `ime`는 한글을 renderer-scoped CDP `Input.imeSetComposition`으로 조합한 뒤 확정합니다.
 
-`jamo` mode의 `focus=True`는 element를 CDP mouse click으로 focus합니다. 입력은 OS 한/영 상태, Windows 전면 창, `pyautogui`에 의존하지 않으며 다른 운영체제와 모바일 emulation에서도 같은 방식으로 동작합니다. 복합 emoji는 모든 mode에서 grapheme 단위로 처리됩니다.
+`ime` mode의 `focus=True`는 element를 CDP mouse click으로 focus합니다. 입력은 OS 한/영 상태, Windows 전면 창, `pyautogui`에 의존하지 않으며 다른 운영체제와 모바일 emulation에서도 같은 방식으로 동작합니다. `jamo`는 `ime`의 호환 alias입니다.
 
 패키지 버전 확인:
 
@@ -629,13 +655,28 @@ print(selenodriver.__version__)
 - `auto`: 한글/Unicode 텍스트는 `Input.insertText`, 나머지는 key event
 - `key`: ASCII/한글 입력은 `keyDown`/`keyUp`을 시도하고 emoji/복합 Unicode는 `Input.insertText`
 - `text`: 모든 값을 `Input.insertText`로 전달
-- `jamo`: 한글 음절마다 CDP IME composition 이벤트를 발생시키고 확정하며, ASCII는 key event로 처리
+- `ime`: 한글 음절마다 CDP IME composition 이벤트를 발생시키고 확정하며, ASCII는 key event로 처리
+- `jamo`: `ime`와 동일한 하위 호환 alias
 
-`jamo` mode는 실제 composition 이벤트가 필요한 웹 입력창을 위한 경로입니다. 운영체제의 한/영 상태를 변경하지 않습니다. 단순 값 입력은 `auto`가 더 가볍고, composition 이벤트를 감지하는 사이트에는 `jamo`가 적합합니다. `ActionChains.send_keys()`와 `send_keys_to_element()`도 같은 mode와 `delay` 인자를 지원합니다.
+`ime` mode는 실제 composition 이벤트가 필요한 웹 입력창을 위한 경로입니다. 운영체제의 한/영 상태를 변경하지 않습니다. 단순 값 입력은 `auto`가 더 가볍습니다. `ActionChains.send_keys()`와 `send_keys_to_element()`도 같은 mode와 `delay` 인자를 지원합니다.
 
 이모지와 복합 이모지는 mode와 관계없이 `Input.insertText`로 처리합니다. ZWJ 가족 이모지, 피부색 modifier, variation selector를 하나의 grapheme cluster로 묶어 중간 문자열이 분리되지 않도록 합니다.
 
-0.1.4부터 `jamo` mode는 Windows `SendInput`과 `pyautogui`를 사용하지 않습니다. `selenodriver.windows_ime`의 기존 helper는 0.1.x 호환 목적으로만 남아 있으며 패키지 입력 경로에서는 호출되지 않습니다.
+`ime`와 `jamo` mode는 Windows `SendInput`과 `pyautogui`를 사용하지 않습니다. `selenodriver.windows_ime`의 기존 helper는 호환 목적으로만 남아 있으며 패키지 입력 경로에서는 호출되지 않습니다.
+
+### 실패 진단
+
+```python
+snapshot = driver.capture_diagnostics(
+    element=element,
+    error=error,
+    screenshot_path="diagnostics/failure.png",
+    html_path="diagnostics/failure.html",
+)
+print(snapshot.to_dict())
+```
+
+진단 정보에는 현재 URL/window, 활성 element와 대상 element의 id/name/type/rect, 마지막 클릭 방식·좌표·fallback 단계, 마지막 입력 mode와 문자열 길이, extension의 `last_errors`가 포함됩니다. 입력 문자열 자체와 쿠키는 저장하지 않습니다. HTML을 요청하면 복제 DOM의 `input` value, `textarea`, `contenteditable` 내용을 제거한 뒤 기록합니다.
 
 액션은 체인에 쌓이고, `perform()` 호출 시 순서대로 실행됩니다.
 
@@ -682,22 +723,10 @@ Selenium 호환 기준으로 `xoffset`, `yoffset`은 element의 중앙점 기준
 
 예를 들어 `xoffset=10`, `yoffset=-5`는 element 중앙에서 오른쪽으로 10px, 위로 5px 이동한 지점을 뜻합니다.
 
-요소 내부의 좌상단 기준 랜덤 좌표를 클릭하고 싶다면:
+요소 내부의 좌상단 기준 offset을 직접 클릭하고 싶다면:
 
 ```python
-import random
-
-size = element.size
-rx = random.randint(5, int(size["width"]) - 5)
-ry = random.randint(5, int(size["height"]) - 5)
-
-xoffset = rx - size["width"] / 2
-yoffset = ry - size["height"] / 2
-
-ActionChains(driver) \
-    .move_to_element_with_offset(element, xoffset, yoffset) \
-    .click() \
-    .perform()
+driver.click_element_offset(element, xoffset=20, yoffset=10, input_type="touch")
 ```
 
 터치 입력으로 같은 위치를 누르려면:

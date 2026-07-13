@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import base64
+import json
+import random
 import re
 
 import pytest
@@ -10,6 +12,7 @@ from selenodriver import (
     Alert,
     By,
     Chrome,
+    ClickResult,
     ElementNotInteractableException,
     Keys,
     MobileEmulationExtension,
@@ -295,6 +298,8 @@ class FakeTab:
                     return cdp.page.ScriptIdentifier("script-id-1")
                 if method == "Page.removeScriptToEvaluateOnNewDocument":
                     return None
+                if method == "Page.printToPDF":
+                    return "cGRm", None
             except StopIteration:
                 return None
 
@@ -522,6 +527,18 @@ def test_new_tab_detection_applies_extension():
     assert driver.raw_tab is tab1
 
 
+def test_public_update_targets_applies_extension():
+    tab1 = FakeTab("tab-1")
+    tab2 = FakeTab("tab-2")
+    browser = FakeBrowser(tab1, [tab1])
+    browser.pending_tabs = [tab2]
+    extension = FakeExtension()
+    driver = Chrome(browser=browser, tab=tab1, runner=ImmediateRunner(), extensions=[extension])
+
+    assert driver.update_targets() == ["tab-1", "tab-2"]
+    assert ("new_tab", "tab-2", True) in extension.events
+
+
 def test_get_waits_for_document_ready_state(driver):
     driver.raw_tab.ready_state = "loading"
     driver.set_page_load_timeout(0.01)
@@ -572,6 +589,37 @@ def test_options_extracts_user_data_dir_argument():
     }
 
 
+def test_options_extension_compatibility_and_profile_pref_merge(tmp_path):
+    options = Options()
+    options.set_user_data_dir(tmp_path)
+    options.add_extension("legacy.crx")
+    options.add_encoded_extension("base64-extension")
+    options.add_experimental_option(
+        "prefs",
+        {"profile.exit_type": "Normal", "profile.exited_cleanly": True},
+    )
+    preference_path = tmp_path / "Default" / "Preferences"
+    preference_path.parent.mkdir(parents=True)
+    preference_path.write_text(
+        json.dumps({"unrelated": 1, "profile": {"name": "Default"}}),
+        encoding="utf-8",
+    )
+
+    assert options.apply_profile_preferences() is True
+    saved = json.loads(preference_path.read_text(encoding="utf-8"))
+    assert saved == {
+        "unrelated": 1,
+        "profile": {
+            "name": "Default",
+            "exit_type": "Normal",
+            "exited_cleanly": True,
+        },
+    }
+    assert options.to_capabilities()["goog:chromeOptions"]["extensions"] == [
+        "legacy.crx", "base64-extension"
+    ]
+
+
 def test_chrome_passes_options_to_nodriver(monkeypatch):
     import nodriver
 
@@ -609,6 +657,24 @@ def test_navigation_helpers(driver):
     assert driver.raw_tab.navigation_calls == ["back", "forward", "reload"]
 
 
+def test_refresh_can_tolerate_timeout_when_body_exists():
+    tab = FakeTab()
+    tab.ready_state = "loading"
+    tab.queries["body"] = [FakeElement(tag_name="body")]
+    browser = FakeBrowser(tab)
+    driver = Chrome(
+        browser=browser,
+        tab=tab,
+        runner=ImmediateRunner(),
+        page_load_timeout=0,
+        tolerate_page_load_timeout=True,
+    )
+
+    driver.refresh()
+
+    assert tab.navigation_calls == ["reload"]
+
+
 def test_session_capabilities_timeouts_and_script_timeout(driver):
     driver.implicitly_wait(1.5)
     driver.set_page_load_timeout(7)
@@ -619,6 +685,25 @@ def test_session_capabilities_timeouts_and_script_timeout(driver):
     assert driver.timeouts.implicit_wait == 1.5
     assert driver.timeouts.page_load == 7
     assert driver.timeouts.script == 9
+
+
+def test_common_driver_metadata_and_print_page(driver):
+    assert driver.name == "chrome"
+    assert driver.orientation == "PORTRAIT"
+    assert driver.print_page({"orientation": "landscape", "background": True}) == "cGRm"
+    request = driver.raw_tab.cdp_requests[-1]
+    assert request["method"] == "Page.printToPDF"
+    assert request["params"]["landscape"] is True
+    assert request["params"]["printBackground"] is True
+
+    class PrintOptions:
+        def to_dict(self):
+            return {"pageRanges": ["1", "3-4"], "shrinkToFit": False}
+
+    assert driver.print_page(PrintOptions()) == "cGRm"
+    request = driver.raw_tab.cdp_requests[-1]
+    assert request["params"]["pageRanges"] == "1,3-4"
+    assert request["params"]["preferCSSPageSize"] is True
 
 
 def test_scroll_helpers(driver):
@@ -797,6 +882,12 @@ def test_execute_cdp_cmd_supports_common_network_and_emulation_commands(driver):
     assert "Network.setUserAgentOverride" in driver.raw_tab.cdp_methods
     assert "Network.setExtraHTTPHeaders" in driver.raw_tab.cdp_methods
     assert "Emulation.setDeviceMetricsOverride" in driver.raw_tab.cdp_methods
+
+    metadata = driver._cdp_user_agent_metadata({
+        "platform": "Android", "mobile": True, "formFactors": ["Mobile"]
+    })
+    if hasattr(metadata, "form_factors"):
+        assert metadata.form_factors == ["Mobile"]
 
 
 def test_cookie_api(driver):
@@ -1213,6 +1304,82 @@ def test_element_touch_click_uses_touch_events(driver):
     assert len(driver.raw_tab.sent) == 2
 
 
+def test_element_random_click_returns_coordinates_and_records_result(driver):
+    raw = FakeElement(rect={"height": 40, "width": 120, "x": 10, "y": 20})
+    element = WebElement(raw, driver._runner, driver)
+
+    result = element.random_click(fallback=False, rng=random.Random(3))
+
+    assert isinstance(result, ClickResult)
+    assert result.method == "touch:random"
+    assert 25 <= result.x <= 115
+    assert 25 <= result.y <= 55
+    assert result.attempts == ("touch:random",)
+    assert driver._last_click == result
+    assert len([
+        request for request in driver.raw_tab.cdp_requests
+        if request["method"] == "Input.dispatchTouchEvent"
+    ]) == 2
+
+
+def test_element_random_click_uses_verification_fallback(driver):
+    raw = FakeElement(rect={"height": 40, "width": 120, "x": 10, "y": 20})
+    element = WebElement(raw, driver._runner, driver)
+    seen = []
+
+    result = element.random_click(
+        rng=random.Random(3),
+        verify=lambda click: seen.append(click.method) or click.method == "mouse:center",
+    )
+
+    assert seen == ["touch:random", "touch:center", "mouse:center"]
+    assert result.method == "mouse:center"
+    assert result.attempts == ("touch:random", "touch:center", "mouse:center")
+
+
+def test_element_random_click_accepts_single_fallback_name(driver):
+    raw = FakeElement(rect={"height": 40, "width": 120, "x": 10, "y": 20})
+    element = WebElement(raw, driver._runner, driver)
+
+    result = element.random_click(
+        fallback="js",
+        rng=random.Random(3),
+        verify=lambda click: click.method == "js",
+    )
+
+    assert result.method == "js"
+    assert result.attempts == ("touch:random", "js")
+
+
+def test_driver_can_make_plain_element_click_randomized():
+    tab = FakeTab()
+    browser = FakeBrowser(tab)
+    driver = Chrome(
+        browser=browser,
+        tab=tab,
+        runner=ImmediateRunner(),
+        randomize_clicks=True,
+        default_click_input="touch",
+    )
+    element = WebElement(FakeElement(), driver._runner, driver)
+
+    result = element.click()
+
+    assert isinstance(result, ClickResult)
+    assert result.method == "touch:random"
+
+
+def test_driver_click_element_offset_uses_element_relative_coordinates(driver):
+    raw = FakeElement(rect={"height": 40, "width": 120, "x": 10, "y": 20})
+    element = WebElement(raw, driver._runner, driver)
+
+    result = driver.click_element_offset(element, 30, 15)
+
+    assert result.method == "touch:offset"
+    assert (result.x, result.y) == (40, 35)
+    assert len(driver.raw_tab.sent) == 2
+
+
 def test_element_click_can_use_touch_alias(driver):
     raw = FakeElement(rect={"height": 20, "width": 100, "x": 10, "y": 15})
     driver.raw_tab.queries["button"] = [raw]
@@ -1252,6 +1419,37 @@ def test_element_size_location_and_rect(driver):
     assert driver.find_element_location(element, absolute=True) == {"x": 17, "y": 29}
 
 
+def test_common_selenium_element_properties(driver):
+    raw = FakeElement(attrs={"role": "button", "aria-label": "Save"})
+    element = WebElement(raw, driver._runner, driver)
+
+    assert element.id == str(raw.backend_node_id)
+    assert element.parent is driver
+    assert element.session_id == driver.session_id
+    assert element.location_once_scrolled_into_view == {"x": 10, "y": 15}
+    assert element.aria_role == "button"
+    assert element.accessible_name == "script-result"
+
+
+def test_diagnostics_records_metadata_without_input_text(driver):
+    raw = FakeElement(attrs={"id": "review", "type": "text"})
+    element = WebElement(raw, driver._runner, driver)
+    element.send_keys("private review text", mode="ime", focus=False)
+    driver.click_element_offset(element)
+
+    snapshot = driver.capture_diagnostics(element=element, error="failed")
+
+    assert snapshot.last_input == {
+        "mode": "ime",
+        "text_length": 19,
+        "source": "WebElement.send_keys",
+        "window_handle": "tab-1",
+    }
+    assert "private review text" not in repr(snapshot.to_dict())
+    assert snapshot.last_click["method"] == "touch:offset"
+    assert snapshot.element["id"] == "review"
+
+
 def test_wait_expected_condition(driver):
     raw = FakeElement("ready")
     driver.raw_tab.queries[".ready"] = [raw]
@@ -1279,6 +1477,7 @@ def test_expected_conditions_title_url_and_text(driver):
     assert EC.url_contains("example")(driver) is True
     assert EC.url_to_be("https://example.test/")(driver) is True
     assert EC.url_matches(r"example\.test")(driver) is True
+    assert EC.url_changes("https://old.test/")(driver) is True
     assert EC.text_to_be_present_in_element((By.CSS_SELECTOR, ".message"), "world")(driver) is True
     assert EC.text_to_be_present_in_element_value((By.CSS_SELECTOR, ".message"), "ready")(driver) is True
 
@@ -1295,6 +1494,20 @@ def test_expected_conditions_visibility_clickable_and_invisibility(driver):
     assert EC.element_to_be_clickable((By.CSS_SELECTOR, ".visible"))(driver)
     assert EC.element_to_be_clickable((By.CSS_SELECTOR, ".disabled"))(driver) is False
     assert EC.invisibility_of_element_located((By.CSS_SELECTOR, ".hidden"))(driver) is True
+
+
+def test_expected_conditions_selection_attribute_and_combinators(driver):
+    selected = FakeElement(attrs={"data-ready": "yes"}, selected=True)
+    driver.raw_tab.queries[".selected"] = [selected]
+    locator = (By.CSS_SELECTOR, ".selected")
+
+    assert EC.element_located_to_be_selected(locator)(driver) is True
+    assert EC.element_selection_state_to_be(WebElement(selected, driver._runner), True)(driver) is True
+    assert EC.element_located_selection_state_to_be(locator, True)(driver) is True
+    assert EC.element_attribute_to_include(locator, "data-ready")(driver) is True
+    assert EC.any_of(EC.title_is("missing"), EC.title_is("Fake title"))(driver) is True
+    assert EC.all_of(EC.title_is("Fake title"), EC.url_contains("example"))(driver) == [True, True]
+    assert EC.none_of(EC.title_is("missing"), EC.url_contains("missing"))(driver) is True
 
 
 def test_expected_conditions_window_count(driver):
@@ -1476,6 +1689,15 @@ def test_action_chains_touch_drag_by_offset(driver):
     assert len(driver.raw_tab.sent) == 4
 
 
+def test_action_chains_wheel_scroll_compatibility(driver):
+    element = WebElement(FakeElement(), driver._runner, driver)
+
+    ActionChains(driver).scroll_to_element(element).scroll_by_amount(10, 20).perform()
+
+    assert any("scrollIntoView" in script for script in element.raw.applied_scripts)
+    assert any("window.scrollBy(10, 20)" in script for script in driver.raw_tab.evaluated_scripts)
+
+
 def test_action_chains_send_keys_to_element(driver):
     raw = FakeElement()
     element = WebElement(raw, driver._runner)
@@ -1542,6 +1764,13 @@ def test_element_send_keys_modes_support_hangul(driver):
         if request["method"] == "Input.imeSetComposition"
     ]
     assert [request["text"] for request in compositions] == ["한", "글"]
+
+    driver.raw_tab.cdp_requests.clear()
+    element.send_keys("한글", mode="ime", focus=False)
+    assert [request["method"] for request in driver.raw_tab.cdp_requests] == [
+        "Input.imeSetComposition", "Input.insertText",
+        "Input.imeSetComposition", "Input.insertText",
+    ]
 
 
 def test_action_chains_text_mode_uses_insert_text(driver):

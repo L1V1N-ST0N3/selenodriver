@@ -1,6 +1,6 @@
 from .action_chains import ActionChains
 
-__version__ = "0.1.9"
+__version__ = "0.2.0"
 from .alert import Alert
 from .by import By
 from .driver import Chrome
@@ -19,6 +19,8 @@ from .exceptions import (
 )
 from .extensions import SelenoDriverExtension
 from .keys import Keys
+from .interactions import ClickResult
+from .diagnostics import DiagnosticSnapshot, DriverDiagnostics
 from .mobile_emulation import MobileEmulationExtension, MobileProfile
 from .options import ChromeOptions, Options
 from .shadowroot import ShadowRoot
@@ -30,6 +32,9 @@ __all__ = [
     "Alert",
     "By",
     "Chrome",
+    "ClickResult",
+    "DiagnosticSnapshot",
+    "DriverDiagnostics",
     "ChromeOptions",
     "Keys",
     "MobileEmulationExtension",

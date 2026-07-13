@@ -35,3 +35,103 @@ class NoSuchFrameException(SelenoDriverException):
 
 class TimeoutException(SelenoDriverException):
     """Raised when a wait condition is not met before timeout."""
+
+
+class InvalidArgumentException(SelenoDriverException):
+    pass
+
+
+class InvalidElementStateException(SelenoDriverException):
+    pass
+
+
+class ElementNotSelectableException(InvalidElementStateException):
+    pass
+
+
+class ElementNotVisibleException(InvalidElementStateException):
+    pass
+
+
+class InvalidSelectorException(NoSuchElementException):
+    pass
+
+
+class InvalidSessionIdException(SelenoDriverException):
+    pass
+
+
+class InvalidSwitchToTargetException(SelenoDriverException):
+    pass
+
+
+class SessionNotCreatedException(SelenoDriverException):
+    pass
+
+
+class MoveTargetOutOfBoundsException(SelenoDriverException):
+    pass
+
+
+class JavascriptException(SelenoDriverException):
+    pass
+
+
+class NoSuchAttributeException(SelenoDriverException):
+    pass
+
+
+class NoSuchCookieException(SelenoDriverException):
+    pass
+
+
+class NoSuchDriverException(SelenoDriverException):
+    pass
+
+
+class NoSuchShadowRootException(SelenoDriverException):
+    pass
+
+
+class DetachedShadowRootException(SelenoDriverException):
+    pass
+
+
+class ScreenshotException(SelenoDriverException):
+    pass
+
+
+class UnableToSetCookieException(SelenoDriverException):
+    pass
+
+
+class InvalidCookieDomainException(SelenoDriverException):
+    pass
+
+
+class InvalidCoordinatesException(SelenoDriverException):
+    pass
+
+
+class InsecureCertificateException(SelenoDriverException):
+    pass
+
+
+class UnexpectedAlertPresentException(SelenoDriverException):
+    pass
+
+
+class UnexpectedTagNameException(SelenoDriverException):
+    pass
+
+
+class UnknownMethodException(SelenoDriverException):
+    pass
+
+
+class ImeActivationFailedException(SelenoDriverException):
+    pass
+
+
+class ImeNotAvailableException(SelenoDriverException):
+    pass

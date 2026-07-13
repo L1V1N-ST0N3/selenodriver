@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import base64
+import random
 import uuid
+from collections.abc import Callable, Sequence
 from typing import Any, Iterable
 
 from .by import By, locator_to_css
-from .exceptions import ElementNotInteractableException, NoSuchElementException
+from .exceptions import ElementClickInterceptedException, ElementNotInteractableException, NoSuchElementException
 from .hangul import split_input_runs
+from .interactions import ClickResult
 from .keys import dispatch_ime_text, dispatch_insert_text, dispatch_key_press, dispatch_text, is_special_key, split_key_sequence
 
 
@@ -32,18 +35,29 @@ class WebElement:
             return ""
         return str(self._runner.run(apply("(el) => el.tagName.toLowerCase()", return_by_value=True)) or "")
 
-    def click(self, *, input_type: str = "mouse", use_touch: bool = False) -> None:
+    def click(self, *, input_type: str = "mouse", use_touch: bool = False) -> ClickResult | None:
+        if (
+            self._driver is not None
+            and self._driver._randomize_clicks
+            and input_type == "mouse"
+            and not use_touch
+        ):
+            return self.random_click(
+                input_type=self._driver._default_click_input,
+                fallback=self._driver._click_fallback,
+            )
         if use_touch:
             input_type = "touch"
         if input_type == "js":
             self.js_click()
-            return
+            return None
         if input_type == "touch":
             self.touch_click()
-            return
+            return None
         if input_type != "mouse":
             raise ValueError("input_type must be 'mouse', 'touch', or 'js'")
         self.mouse_click()
+        return None
 
     def mouse_click(self) -> None:
         if self._driver is not None:
@@ -60,6 +74,119 @@ class WebElement:
         self._wait_until_ready_for_action()
         self.touch_scroll_into_view()
         self._touch_click_center()
+
+    def random_click(
+        self,
+        *,
+        input_type: str = "touch",
+        fallback: bool | Sequence[str] = True,
+        margin: float = 0.125,
+        verify: Callable[[ClickResult], bool] | None = None,
+        rng: random.Random | None = None,
+    ) -> ClickResult:
+        """Click a random safe point and optionally try conservative fallbacks."""
+        if self._driver is None:
+            raise ElementNotInteractableException("random_click requires an attached driver")
+        if input_type not in {"touch", "mouse"}:
+            raise ValueError("input_type must be 'touch' or 'mouse'")
+        self._wait_until_ready_for_action()
+        if input_type == "touch":
+            self.touch_scroll_into_view()
+        else:
+            self.scroll_into_view()
+
+        rect = self._viewport_rect()
+        width = float(rect["width"])
+        height = float(rect["height"])
+        if width <= 0 or height <= 0:
+            raise ElementNotInteractableException("Element has no clickable area")
+        margin_x = self._click_margin(width, margin)
+        margin_y = self._click_margin(height, margin)
+        generator = rng or random
+        random_x = float(rect["x"]) + generator.uniform(margin_x, max(margin_x, width - margin_x))
+        random_y = float(rect["y"]) + generator.uniform(margin_y, max(margin_y, height - margin_y))
+        center_x = float(rect["x"]) + width / 2
+        center_y = float(rect["y"]) + height / 2
+
+        stages: list[tuple[str, float | None, float | None]] = [
+            (f"{input_type}:random", random_x, random_y)
+        ]
+        if fallback is True:
+            stages.extend(
+                [(f"{input_type}:center", center_x, center_y)]
+            )
+            other = "mouse" if input_type == "touch" else "touch"
+            stages.extend([(f"{other}:center", center_x, center_y), ("js", None, None)])
+        elif fallback:
+            fallback_methods = [fallback] if isinstance(fallback, str) else fallback
+            for method in fallback_methods:
+                if method not in {"touch", "mouse", "js"}:
+                    raise ValueError("fallback entries must be 'touch', 'mouse', or 'js'")
+                stages.append(
+                    ("js", None, None)
+                    if method == "js"
+                    else (f"{method}:center", center_x, center_y)
+                )
+
+        attempts: list[str] = []
+        last_error: Exception | None = None
+        url_before = self._driver.current_url
+        for method, x, y in stages:
+            attempts.append(method)
+            try:
+                if method == "js":
+                    self.js_click()
+                else:
+                    if not self._point_receives_click(float(x), float(y)):
+                        raise ElementClickInterceptedException(
+                            f"Another element covers click point ({x:.1f}, {y:.1f})"
+                        )
+                    selected = method.split(":", 1)[0]
+                    self._driver._dispatch_point_click(float(x), float(y), input_type=selected)
+                result = ClickResult(
+                    method=method,
+                    x=x,
+                    y=y,
+                    attempts=tuple(attempts),
+                    url_before=url_before,
+                    url_after=self._driver.current_url,
+                    verified=True,
+                )
+                if verify is not None and not bool(verify(result)):
+                    last_error = ElementClickInterceptedException(
+                        f"Click verification failed after {method}"
+                    )
+                    continue
+                self._driver._record_click(result)
+                return result
+            except (ElementNotInteractableException, NoSuchElementException):
+                raise
+            except Exception as error:
+                last_error = error
+        if last_error is not None:
+            raise last_error
+        raise ElementClickInterceptedException("No click strategy succeeded")
+
+    @staticmethod
+    def _click_margin(size: float, margin: float) -> float:
+        requested = size * margin if 0 <= margin < 1 else margin
+        return min(max(0.5, float(requested)), max(0.5, size / 2))
+
+    def _point_receives_click(self, x: float, y: float) -> bool:
+        if self._driver is None:
+            return True
+        return bool(
+            self._driver.execute_script(
+                """
+                const el = arguments[0];
+                const hit = document.elementFromPoint(arguments[1], arguments[2]);
+                return Boolean(hit && (hit === el || el.contains(hit) || hit.contains(el)));
+                """,
+                self,
+                x,
+                y,
+            )
+        )
 
     def js_click(self) -> None:
         apply = getattr(self._raw, "apply", None)
@@ -83,11 +210,18 @@ class WebElement:
         mode: str = "auto",
         focus: bool | None = None,
     ) -> None:
-        if mode not in {"auto", "key", "text", "jamo"}:
-            raise ValueError("mode must be 'auto', 'key', 'text', or 'jamo'")
+        if mode not in {"auto", "key", "text", "ime", "jamo"}:
+            raise ValueError("mode must be 'auto', 'key', 'text', 'ime', or 'jamo'")
+        if mode == "jamo":
+            mode = "ime"
+        if self._driver is not None:
+            text_length = sum(len(str(item)) for item in value)
+            self._driver._record_input(
+                mode=mode, text_length=text_length, source="WebElement.send_keys"
+            )
         self._wait_until_ready_for_action()
         if focus is None:
-            focus = mode == "jamo"
+            focus = mode == "ime"
         if focus:
             self.mouse_click()
         focus_method = getattr(self._raw, "focus", None)
@@ -109,7 +243,7 @@ class WebElement:
                 else:
                     dispatch_text(self._driver.raw_tab, self._runner, part, delay=delay)
             return
-        if mode == "jamo":
+        if mode == "ime":
             self._send_jamo_chunk(chunk, delay=delay)
             return
         if mode == "text":
@@ -239,7 +373,21 @@ class WebElement:
         return None
 
     def get_dom_attribute(self, name: str) -> Any:
-        return self.get_attribute(name)
+        attrs = getattr(self._raw, "attrs", None) or getattr(self._raw, "attributes", None)
+        attrs = self._runner.run(attrs() if callable(attrs) else attrs)
+        if isinstance(attrs, dict):
+            return attrs.get(name)
+        if isinstance(attrs, Iterable) and not isinstance(attrs, (str, bytes)):
+            items = list(attrs)
+            for index in range(0, len(items) - 1, 2):
+                if items[index] == name:
+                    return items[index + 1]
+        apply = getattr(self._raw, "apply", None)
+        if apply is None:
+            return None
+        return self._runner.run(
+            apply(f"(el) => el.getAttribute({name!r})", return_by_value=True)
+        )
 
     def get_property(self, name: str) -> Any:
         apply = getattr(self._raw, "apply", None)
@@ -303,6 +451,52 @@ class WebElement:
     def location(self) -> dict[str, float]:
         rect = self.rect
         return {"x": rect["x"], "y": rect["y"]}
+
+    @property
+    def location_once_scrolled_into_view(self) -> dict[str, float]:
+        self.scroll_into_view()
+        rect = self._viewport_rect()
+        return {"x": rect["x"], "y": rect["y"]}
+
+    @property
+    def id(self) -> str:
+        value = getattr(self._raw, "backend_node_id", None)
+        if value is None:
+            value = getattr(self._raw, "node_id", None)
+        return str(value if value is not None else id(self._raw))
+
+    @property
+    def parent(self) -> Any:
+        return self._driver
+
+    @property
+    def session_id(self) -> str | None:
+        return self._driver.session_id if self._driver is not None else None
+
+    @property
+    def accessible_name(self) -> str:
+        if self._driver is None:
+            return str(self.get_attribute("aria-label") or self.get_attribute("alt") or "")
+        return str(
+            self._driver.execute_script(
+                """
+                const el = arguments[0];
+                const labelledBy = el.getAttribute('aria-labelledby');
+                if (labelledBy) {
+                  const text = labelledBy.split(/\\s+/).map((id) => document.getElementById(id)?.innerText || '').join(' ').trim();
+                  if (text) return text;
+                }
+                return el.getAttribute('aria-label') || el.getAttribute('alt') ||
+                       el.getAttribute('title') || (el.innerText || '').trim();
+                """,
+                self,
+            ) or ""
+        )
+
+    @property
+    def aria_role(self) -> str:
+        role = self.get_dom_attribute("role")
+        return str(role or self.tag_name or "")
 
     @property
     def rect(self) -> dict[str, float]:

@@ -43,6 +43,13 @@ def url_matches(pattern: str):
     return _predicate
 
 
+def url_changes(url: str):
+    def _predicate(driver: Any):
+        return driver.current_url != url
+
+    return _predicate
+
+
 def presence_of_element_located(locator: tuple[str, str]):
     def _predicate(driver: Any):
         try:
@@ -130,6 +137,52 @@ def element_to_be_clickable(mark: tuple[str, str] | WebElement):
     return _predicate
 
 
+def element_to_be_selected(element: WebElement):
+    def _predicate(_driver: Any):
+        return element.is_selected()
+
+    return _predicate
+
+
+def element_located_to_be_selected(locator: tuple[str, str]):
+    def _predicate(driver: Any):
+        try:
+            return driver.find_element(*locator).is_selected()
+        except NoSuchElementException:
+            return False
+
+    return _predicate
+
+
+def element_selection_state_to_be(element: WebElement, is_selected: bool):
+    def _predicate(_driver: Any):
+        return element.is_selected() is bool(is_selected)
+
+    return _predicate
+
+
+def element_located_selection_state_to_be(locator: tuple[str, str], is_selected: bool):
+    def _predicate(driver: Any):
+        try:
+            return driver.find_element(*locator).is_selected() is bool(is_selected)
+        except NoSuchElementException:
+            return False
+
+    return _predicate
+
+
+def frame_to_be_available_and_switch_to_it(locator: Any):
+    def _predicate(driver: Any):
+        try:
+            frame = driver.find_element(*locator) if isinstance(locator, tuple) else locator
+            driver.switch_to.frame(frame)
+            return True
+        except Exception:
+            return False
+
+    return _predicate
+
+
 def text_to_be_present_in_element(locator: tuple[str, str], text_: str):
     def _predicate(driver: Any):
         try:
@@ -153,6 +206,16 @@ def text_to_be_present_in_element_attribute(locator: tuple[str, str], attribute_
 
 def text_to_be_present_in_element_value(locator: tuple[str, str], text_: str):
     return text_to_be_present_in_element_attribute(locator, "value", text_)
+
+
+def element_attribute_to_include(locator: tuple[str, str], attribute_: str):
+    def _predicate(driver: Any):
+        try:
+            return driver.find_element(*locator).get_attribute(attribute_) is not None
+        except NoSuchElementException:
+            return False
+
+    return _predicate
 
 
 def number_of_windows_to_be(num_windows: int):
@@ -192,6 +255,49 @@ def staleness_of(element: WebElement):
             return False
         except Exception:
             return True
+
+    return _predicate
+
+
+def any_of(*expected_conditions):
+    def _predicate(driver: Any):
+        for condition in expected_conditions:
+            try:
+                result = condition(driver)
+                if result:
+                    return result
+            except Exception:
+                pass
+        return False
+
+    return _predicate
+
+
+def all_of(*expected_conditions):
+    def _predicate(driver: Any):
+        results = []
+        for condition in expected_conditions:
+            try:
+                result = condition(driver)
+                if not result:
+                    return False
+                results.append(result)
+            except Exception:
+                return False
+        return results
+
+    return _predicate
+
+
+def none_of(*expected_conditions):
+    def _predicate(driver: Any):
+        for condition in expected_conditions:
+            try:
+                if condition(driver):
+                    return False
+            except Exception:
+                pass
+        return True
 
     return _predicate
 

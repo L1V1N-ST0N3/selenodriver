@@ -8,7 +8,11 @@
 python -m pip install selenodriver
 ```
 
-Version 0.1.9 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.2.0 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+
+### Version 0.2.0
+
+Version 0.2.0 promotes randomized touch/mouse clicks, element-relative offsets, viewport-to-screen conversion, privacy-conscious diagnostics, PDF printing, and `mode="ime"` to public APIs. `mode="jamo"` remains an alias. Common Selenium element metadata, expected conditions, wheel scrolling, options, and exception names are also expanded. BiDi, FedCM, virtual-authenticator, and downloadable-files APIs remain out of scope.
 
 ### Version 0.1.9
 
@@ -121,6 +125,7 @@ element.click()             # CDP coordinate click
 element.mouse_click()       # explicit mouse event
 element.touch_click()       # touchStart/touchEnd
 element.js_click()          # JavaScript click
+result = element.random_click(input_type="touch", fallback=True)
 element.send_keys("hello")
 element.clear()
 element.scroll_into_view()
@@ -133,6 +138,8 @@ print(element.rect)
 ```
 
 The default click uses viewport coordinates and CDP input events. Use `js_click()` only when JavaScript activation is specifically required.
+
+`random_click()` keeps a safe in-element margin, checks `elementFromPoint()`, and can fall back from a randomized point to center touch, center mouse, and JavaScript. It returns a `ClickResult` containing the method, viewport coordinates, attempted stages, and before/after URLs. Use `driver.click_element_offset(element, x, y)` for top-left-relative offsets or enable randomized plain clicks with `Chrome(randomize_clicks=True)`.
 
 ## JavaScript
 
@@ -188,7 +195,7 @@ Plain text from `WebElement.send_keys()` and `ActionChains.send_keys()` is also 
 element.send_keys("abc")       # default: real CDP keyboard input
 element.send_keys_js("abc")    # explicit JavaScript value mutation
 element.send_keys("한글", mode="auto")  # Korean uses Input.insertText
-element.send_keys("한글", mode="jamo")  # CDP IME composition events
+element.send_keys("한글", mode="ime")   # CDP IME composition events
 element.send_keys("abc", delay=0.05)     # delay between events
 ```
 
@@ -198,17 +205,17 @@ element.send_keys("abc", delay=0.05)     # delay between events
 element.send_keys("hello 한글 😀", mode="auto")
 element.send_keys("hello", mode="key")
 element.send_keys("한글 😀", mode="text")
-element.send_keys("한글", mode="jamo", focus=True)
+element.send_keys("한글", mode="ime", focus=True)
 
 ActionChains(driver).send_keys("한글 😀", mode="auto", delay=0.05).perform()
 ActionChains(driver).send_keys_to_element(
-    element, "한글", mode="jamo", delay=0.05
+    element, "한글", mode="ime", delay=0.05
 ).perform()
 ```
 
-`auto` uses CDP key events for ASCII and `Input.insertText` for Hangul and emoji. `key` attempts key events for ASCII/Hangul and uses text insertion for emoji. `text` sends completed text through `Input.insertText`, while `jamo` composes and commits Hangul through renderer-scoped CDP `Input.imeSetComposition`.
+`auto` uses CDP key events for ASCII and `Input.insertText` for Hangul and emoji. `key` attempts key events for ASCII/Hangul and uses text insertion for emoji. `text` sends completed text through `Input.insertText`, while `ime` composes and commits Hangul through renderer-scoped CDP `Input.imeSetComposition`.
 
-With `jamo`, `focus=True` clicks the element through CDP before input. It does not depend on Windows foreground focus, OS Korean/English state, or `pyautogui`, and uses the same path on other operating systems and mobile emulation. Compound emoji are handled as graphemes in every mode.
+With `ime`, `focus=True` clicks the element through CDP before input. It does not depend on Windows foreground focus, OS Korean/English state, or `pyautogui`, and uses the same path on other operating systems and mobile emulation. `jamo` remains a compatibility alias for `ime`.
 
 Check the package version:
 
@@ -223,13 +230,27 @@ Input modes:
 - `auto`: uses `Input.insertText` for Hangul/Unicode and key events for other text
 - `key`: attempts `keyDown`/`keyUp` for ASCII/Hangul and uses `Input.insertText` for emoji and compound Unicode
 - `text`: sends all values through `Input.insertText`
-- `jamo`: emits and commits CDP IME composition events for Hangul while using key events for ASCII
+- `ime`: emits and commits CDP IME composition events for Hangul while using key events for ASCII
+- `jamo`: compatibility alias for `ime`
 
-`jamo` mode is intended for fields that react to real composition events and does not change the operating system input language. Prefer the lighter `auto` mode for simple value input. `ActionChains.send_keys()` and `send_keys_to_element()` support the same mode and `delay` arguments.
+`ime` mode is intended for fields that react to real composition events and does not change the operating system input language. Prefer the lighter `auto` mode for simple value input. `ActionChains.send_keys()` and `send_keys_to_element()` support the same mode and `delay` arguments.
 
 Emoji and compound emoji use `Input.insertText` in every mode. ZWJ family emoji, skin-tone modifiers, and variation selectors are grouped as grapheme clusters so the sequence is not split into unrelated key events.
 
-Since 0.1.4, `jamo` mode does not use Windows `SendInput` or `pyautogui`. Legacy helpers under `selenodriver.windows_ime` remain importable for 0.1.x compatibility but are not called by package input modes.
+`ime` and `jamo` do not use Windows `SendInput` or `pyautogui`. Legacy helpers under `selenodriver.windows_ime` remain importable for compatibility but are not called by package input modes.
+
+### Failure diagnostics
+
+```python
+snapshot = driver.capture_diagnostics(
+    element=element,
+    error=error,
+    screenshot_path="diagnostics/failure.png",
+    html_path="diagnostics/failure.html",
+)
+```
+
+The snapshot contains URL/window state, safe element metadata, the last click method and coordinates, the last input mode and length, and extension errors. It does not record input text or cookies. Requested HTML is cloned and redacted for input values, textareas, and contenteditable fields before it is written.
 
 Mouse, touch, offset clicks, drag operations, long press, key down/up, pauses, and element-focused input are available. This is not a complete W3C Actions implementation.
 

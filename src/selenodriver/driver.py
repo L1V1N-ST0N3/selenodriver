@@ -8,6 +8,7 @@ from typing import Any
 
 from .alert import Alert
 from .by import By, locator_to_css
+from .diagnostics import DriverDiagnostics, DiagnosticSnapshot
 from .element import WebElement
 from .exceptions import (
     NoAlertPresentException,
@@ -18,6 +19,7 @@ from .exceptions import (
     TimeoutException,
 )
 from .extensions import SelenoDriverExtension
+from .interactions import ClickResult
 from .options import Options
 from .sync import SyncRunner
 from .timeouts import Timeouts
@@ -63,6 +65,10 @@ class Chrome:
         page_load_strategy: str = "normal",
         auto_wait: bool = False,
         auto_wait_timeout: float = 10,
+        randomize_clicks: bool = False,
+        default_click_input: str = "touch",
+        click_fallback: bool = True,
+        tolerate_page_load_timeout: bool = False,
         **kwargs: Any,
     ):
         self._owns_runner = runner is None
@@ -76,17 +82,27 @@ class Chrome:
         self._implicit_wait = 0.0
         self._auto_wait = auto_wait
         self._auto_wait_timeout = float(auto_wait_timeout)
+        if default_click_input not in {"touch", "mouse"}:
+            raise ValueError("default_click_input must be 'touch' or 'mouse'")
+        self._randomize_clicks = bool(randomize_clicks)
+        self._default_click_input = default_click_input
+        self._click_fallback = bool(click_fallback)
+        self._tolerate_page_load_timeout = bool(tolerate_page_load_timeout)
         self._script_timeout = 30.0
         self._current_alert: Any = None
         self._alert_prompt_text: str | None = None
         self._extensions: list[Any] = []
         self._init_script_ids: list[Any] = []
         self._known_window_handles: set[str] = set()
+        self._last_click: ClickResult | None = None
+        self._last_input: dict[str, Any] | None = None
+        self.diagnostics = DriverDiagnostics(self)
         self.switch_to = SwitchTo(self)
         if self._browser is None:
             import nodriver
 
             if options is not None:
+                options.apply_profile_preferences()
                 kwargs = {**options.to_nodriver_kwargs(), **kwargs}
             self._browser = self._runner.run(nodriver.start(**kwargs))
         if self._tab is None:
@@ -181,6 +197,15 @@ class Chrome:
             "pageLoadStrategy": self._page_load_strategy,
         }
 
+    @property
+    def name(self) -> str:
+        return "chrome"
+
+    @property
+    def orientation(self) -> str:
+        viewport = self._viewport_size()
+        return "LANDSCAPE" if viewport["width"] > viewport["height"] else "PORTRAIT"
+
     def back(self) -> None:
         self._runner.run(self._tab.back())
         self._wait_for_page_load()
@@ -194,7 +219,13 @@ class Chrome:
     def refresh(self) -> None:
         self._notify_extensions("before_navigate", self.current_url)
         self._runner.run(self._tab.reload())
-        self._wait_for_page_load()
+        try:
+            self._wait_for_page_load()
+        except TimeoutException:
+            if not self._tolerate_page_load_timeout:
+                raise
+            if not self.find_elements(By.TAG_NAME, "body"):
+                raise
         self._notify_extensions("after_navigate", self.current_url)
         self._notify_extensions("on_context_changed")
 
@@ -545,6 +576,45 @@ class Chrome:
             return {}
         raise SelenoDriverException(f"Unsupported CDP command: {cmd}")
 
+    def print_page(self, print_options: Any = None) -> str:
+        """Return a base64 PDF using Selenium-compatible print option names."""
+        from nodriver import cdp
+
+        source = print_options or {}
+        if not isinstance(source, dict) and callable(getattr(source, "to_dict", None)):
+            source = source.to_dict()
+        get_value = source.get if isinstance(source, dict) else lambda key, default=None: getattr(source, key, default)
+        first = lambda *keys: next((get_value(key) for key in keys if get_value(key) is not None), None)
+        orientation = first("orientation")
+        scale = first("scale")
+        background = first("background", "printBackground")
+        page_ranges = first("page_ranges", "pageRanges")
+        shrink_to_fit = first("shrink_to_fit", "shrinkToFit")
+        if isinstance(page_ranges, (list, tuple)):
+            page_ranges = ",".join(map(str, page_ranges))
+        page = first("page") or {}
+        margin = first("margin") or {}
+        width = page.get("width") if isinstance(page, dict) else getattr(page, "width", None)
+        height = page.get("height") if isinstance(page, dict) else getattr(page, "height", None)
+        margin_value = lambda name: margin.get(name) if isinstance(margin, dict) else getattr(margin, name, None)
+        data, _stream = self.send_cdp(
+            cdp.page.print_to_pdf(
+                landscape=orientation == "landscape" if orientation else None,
+                print_background=background,
+                scale=scale,
+                paper_width=width,
+                paper_height=height,
+                margin_top=margin_value("top"),
+                margin_bottom=margin_value("bottom"),
+                margin_left=margin_value("left"),
+                margin_right=margin_value("right"),
+                page_ranges=page_ranges,
+                prefer_css_page_size=(not shrink_to_fit)
+                if shrink_to_fit is not None else None,
+            )
+        )
+        return str(data)
+
     @staticmethod
     def _cdp_user_agent_metadata(value: Any) -> Any:
         if not isinstance(value, dict):
@@ -554,7 +624,9 @@ class Chrome:
         brand = lambda item: cdp.emulation.UserAgentBrandVersion(
             str(item.get("brand", "")), str(item.get("version", ""))
         )
-        return cdp.emulation.UserAgentMetadata(
+        import inspect
+
+        metadata_kwargs = dict(
             platform=str(value.get("platform", "")),
             platform_version=str(value.get("platformVersion", "")),
             architecture=str(value.get("architecture", "")),
@@ -566,12 +638,132 @@ class Chrome:
             bitness=value.get("bitness"),
             wow64=value.get("wow64"),
         )
+        if "form_factors" in inspect.signature(cdp.emulation.UserAgentMetadata).parameters:
+            metadata_kwargs["form_factors"] = list(value.get("formFactors") or ["Mobile"])
+        return cdp.emulation.UserAgentMetadata(**metadata_kwargs)
 
     def scroll_to(self, x: int, y: int) -> None:
         self.execute_script(f"window.scrollTo({int(x)}, {int(y)})")
 
     def scroll_by(self, x: int, y: int) -> None:
         self.execute_script(f"window.scrollBy({int(x)}, {int(y)})")
+
+    def click_element_offset(
+        self,
+        element: WebElement,
+        xoffset: float | None = None,
+        yoffset: float | None = None,
+        *,
+        input_type: str = "touch",
+    ) -> ClickResult:
+        """Click an element-relative offset using viewport CDP coordinates."""
+        if input_type not in {"touch", "mouse"}:
+            raise ValueError("input_type must be 'touch' or 'mouse'")
+        element._wait_until_ready_for_action()
+        if input_type == "touch":
+            element.touch_scroll_into_view()
+        else:
+            element.scroll_into_view()
+        rect = element._viewport_rect()
+        width = max(1.0, float(rect["width"]))
+        height = max(1.0, float(rect["height"]))
+        local_x = width / 2 if xoffset is None else float(xoffset)
+        local_y = height / 2 if yoffset is None else float(yoffset)
+        local_x = min(max(0.5, local_x), max(0.5, width - 0.5))
+        local_y = min(max(0.5, local_y), max(0.5, height - 0.5))
+        x = float(rect["x"]) + local_x
+        y = float(rect["y"]) + local_y
+        url_before = self.current_url
+        self._dispatch_point_click(x, y, input_type=input_type)
+        result = ClickResult(
+            method=f"{input_type}:offset",
+            x=x,
+            y=y,
+            attempts=(f"{input_type}:offset",),
+            url_before=url_before,
+            url_after=self.current_url,
+            verified=True,
+        )
+        self._record_click(result)
+        return result
+
+    def click_element_random(self, element: WebElement, **kwargs: Any) -> ClickResult:
+        return element.random_click(**kwargs)
+
+    def viewport_point_to_screen(self, viewport_x: float, viewport_y: float) -> dict[str, Any]:
+        metrics = self.execute_script(
+            """
+            return {
+                innerWidth: window.innerWidth || 1,
+                innerHeight: window.innerHeight || 1,
+                outerWidth: window.outerWidth || window.innerWidth || 1,
+                outerHeight: window.outerHeight || window.innerHeight || 1
+            };
+            """
+        ) or {}
+        bounds = self.get_window_rect()
+        outer_width = max(1.0, float(metrics.get("outerWidth") or 1))
+        outer_height = max(1.0, float(metrics.get("outerHeight") or 1))
+        inner_width = max(1.0, float(metrics.get("innerWidth") or outer_width))
+        inner_height = max(1.0, float(metrics.get("innerHeight") or outer_height))
+        scale_x = max(1.0, float(bounds["width"])) / outer_width
+        scale_y = max(1.0, float(bounds["height"])) / outer_height
+        content_left = float(bounds["x"]) + max(
+            0.0, (float(bounds["width"]) - inner_width * scale_x) / 2
+        )
+        content_top = float(bounds["y"]) + max(
+            0.0, float(bounds["height"]) - inner_height * scale_y
+        )
+        return {
+            "x": int(content_left + float(viewport_x) * scale_x),
+            "y": int(content_top + float(viewport_y) * scale_y),
+            "bounds": bounds,
+            "metrics": metrics,
+            "scale_x": scale_x,
+            "scale_y": scale_y,
+            "content_left": content_left,
+            "content_top": content_top,
+        }
+
+    def _dispatch_point_click(self, x: float, y: float, *, input_type: str) -> None:
+        from nodriver import cdp
+
+        if input_type == "touch":
+            point = cdp.input_.TouchPoint(
+                x=x, y=y, radius_x=1, radius_y=1, force=1, id_=1
+            )
+            self.send_cdp(cdp.input_.dispatch_touch_event("touchStart", [point]))
+            self.send_cdp(cdp.input_.dispatch_touch_event("touchEnd", []))
+            return
+        if input_type == "mouse":
+            self.send_cdp(
+                cdp.input_.dispatch_mouse_event(
+                    "mousePressed", x=x, y=y,
+                    button=cdp.input_.MouseButton("left"), buttons=1, click_count=1,
+                )
+            )
+            self.send_cdp(
+                cdp.input_.dispatch_mouse_event(
+                    "mouseReleased", x=x, y=y,
+                    button=cdp.input_.MouseButton("left"), buttons=0, click_count=1,
+                )
+            )
+            return
+        raise ValueError("input_type must be 'touch' or 'mouse'")
+
+    def _record_click(self, result: ClickResult) -> None:
+        self._last_click = result
+
+    def _record_input(self, *, mode: str, text_length: int, source: str) -> None:
+        self._last_input = {
+            "mode": mode,
+            "text_length": int(text_length),
+            "source": source,
+            "window_handle": self.current_window_handle,
+        }
+
+    def capture_diagnostics(self, **kwargs: Any) -> DiagnosticSnapshot:
+        return self.diagnostics.capture(**kwargs)
 
     def touch_scroll_by(
         self,
@@ -840,6 +1032,11 @@ class Chrome:
         if update_targets is not None:
             self._runner.run(update_targets())
         self._apply_extensions_to_new_tabs()
+
+    def update_targets(self) -> list[str]:
+        """Refresh browser targets and apply extension hooks to new tabs."""
+        self._update_targets()
+        return self._window_handles_without_update()
 
     def _window_handles_without_update(self) -> list[str]:
         tabs = getattr(self._browser, "tabs", None)

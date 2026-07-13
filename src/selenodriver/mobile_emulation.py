@@ -220,14 +220,15 @@ class MobileEmulationExtension:
         if not self.profile.user_agent_metadata:
             return None
         from nodriver import cdp
+        import inspect
 
         data = self.profile.user_agent_metadata
-        return cdp.emulation.UserAgentMetadata(
+        metadata_kwargs = dict(
             platform=data.get("platform", self.profile.platform),
             platform_version=data.get("platformVersion", ""),
             architecture=data.get("architecture", ""),
             model=data.get("model", ""),
-            mobile=bool(data.get("mobile", True)),
+            mobile=True,
             brands=[
                 cdp.emulation.UserAgentBrandVersion(item["brand"], item["version"])
                 for item in data.get("brands", [])
@@ -240,6 +241,9 @@ class MobileEmulationExtension:
             bitness=data.get("bitness"),
             wow64=data.get("wow64"),
         )
+        if "form_factors" in inspect.signature(cdp.emulation.UserAgentMetadata).parameters:
+            metadata_kwargs["form_factors"] = ["Mobile"]
+        return cdp.emulation.UserAgentMetadata(**metadata_kwargs)
 
     def _resolve_profile(self, profile: str | dict[str, Any] | MobileProfile, seed: int | None) -> MobileProfile:
         if isinstance(profile, MobileProfile):
