@@ -985,6 +985,38 @@ def test_element_property_css_and_selected():
     assert element.is_selected() is True
 
 
+def test_get_attribute_returns_none_without_nodriver_json_fallback():
+    class MissingAttributeElement(FakeElement):
+        def __init__(self):
+            super().__init__()
+            self.js_attribute_calls = 0
+
+        def apply(self, script, **kwargs):
+            return None
+
+        def get_js_attributes(self):
+            self.js_attribute_calls += 1
+            raise TypeError("the JSON object must be str, bytes or bytearray, not NoneType")
+
+    raw = MissingAttributeElement()
+    element = WebElement(raw, ImmediateRunner())
+
+    assert element.get_attribute("aria-expanded") is None
+    assert raw.js_attribute_calls == 0
+
+
+def test_get_attribute_handles_invalid_nodriver_attribute_payload():
+    class NoApplyElement:
+        attrs = {}
+
+        def get_js_attributes(self):
+            raise TypeError("the JSON object must be str, bytes or bytearray, not NoneType")
+
+    element = WebElement(NoApplyElement(), ImmediateRunner())
+
+    assert element.get_attribute("aria-expanded") is None
+
+
 def test_element_submit_scroll_and_shadow_root():
     raw_child = FakeElement("shadow child")
 

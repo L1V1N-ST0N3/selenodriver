@@ -362,12 +362,15 @@ class WebElement:
               return value;
             }}
             """
-            value = self._runner.run(apply(script, return_by_value=True))
-            if value is not None:
-                return value
+            # None is a valid result for a missing attribute. Falling through to
+            # nodriver's get_js_attributes() can make it call json.loads(None).
+            return self._runner.run(apply(script, return_by_value=True))
         get_js_attributes = getattr(self._raw, "get_js_attributes", None)
         if get_js_attributes is not None:
-            js_attrs = self._runner.run(get_js_attributes())
+            try:
+                js_attrs = self._runner.run(get_js_attributes())
+            except (TypeError, ValueError):
+                return None
             if isinstance(js_attrs, dict):
                 return js_attrs.get(name)
         return None

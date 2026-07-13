@@ -22,6 +22,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [0.1.8 업데이트 내역 / Release Notes](#018-업데이트-내역--release-notes)
 - [0.1.9 업데이트 내역 / Release Notes](#019-업데이트-내역--release-notes)
 - [0.2.0 업데이트 내역 / Release Notes](#020-업데이트-내역--release-notes)
+- [0.2.1 업데이트 내역 / Release Notes](#021-업데이트-내역--release-notes)
 - [빠른 시작 / Quick Start](#빠른-시작--quick-start)
 - [클릭과 입력 방식 / Click and Input Modes](#클릭과-입력-방식--click-and-input-modes)
 - [좌표 클릭 / Offset and Randomized Clicks](#좌표-클릭--랜덤-위치-클릭--offset-and-randomized-clicks)
@@ -55,7 +56,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.2.0
+selenodriver 0.2.1
 ```
 
 The version is also available from Python:
@@ -169,6 +170,11 @@ field.send_keys(Keys.ENTER)
 - **Selenium 호환 / Selenium compatibility:** 일반 element metadata, `print_page()`, selection/frame/combinator expected conditions, wheel scroll methods, common exception names, `Options.to_capabilities()` 및 공개 `update_targets()`를 추가했습니다. / Adds common element metadata, PDF printing, expected conditions, wheel scrolling, exception names, options compatibility, and public target refresh.
 - **모바일 Client Hints / Mobile Client Hints:** mobile metadata에서 `formFactors=["Mobile"]`을 전달합니다. / Sends `formFactors=["Mobile"]` in supported mobile user-agent metadata.
 - **범위 / Scope:** Selenium BiDi, FedCM, virtual authenticator 및 downloadable-files API는 구현 범위가 아니며 지원하는 것처럼 동작하지 않습니다. / Selenium BiDi, FedCM, virtual-authenticator, and downloadable-files APIs remain explicitly out of scope.
+
+## 0.2.1 업데이트 내역 / Release Notes
+
+- **누락 attribute 처리 / Missing attribute handling:** `get_attribute()`가 실제로 존재하지 않는 attribute를 조회할 때 nodriver의 `get_js_attributes()` fallback에서 `json.loads(None)` 오류를 내지 않고 Selenium과 같이 `None`을 반환합니다. / `get_attribute()` now returns `None` for a genuinely missing attribute instead of reaching nodriver's fragile `get_js_attributes()` fallback and raising from `json.loads(None)`.
+- **동적 펼치기 버튼 / Dynamic expand controls:** `aria-expanded`가 없는 일회성 `펼쳐보기` 버튼을 정상적으로 판별할 수 있습니다. `aria-expanded="false"`/`"true"` 토글 버튼 동작은 그대로 유지됩니다. / One-shot expand controls without `aria-expanded` can now be detected safely while regular `false`/`true` toggle controls retain their behavior.
 
 ## 빠른 시작 / Quick Start
 

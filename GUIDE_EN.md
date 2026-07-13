@@ -8,7 +8,11 @@
 python -m pip install selenodriver
 ```
 
-Version 0.2.0 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.2.1 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+
+### Version 0.2.1
+
+Version 0.2.1 fixes missing DOM attribute reads. `get_attribute()` now returns `None` when an attribute such as `aria-expanded` is absent, avoiding nodriver's invalid `json.loads(None)` fallback. This also supports one-shot expand controls that intentionally omit `aria-expanded`.
 
 ### Version 0.2.0
 

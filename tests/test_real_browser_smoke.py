@@ -131,6 +131,15 @@ def test_mobile_random_touch_click_returns_diagnostics(mobile_driver):
     assert snapshot.last_click["method"] == "touch:random"
 
 
+def test_missing_dom_attribute_returns_none(desktop_driver):
+    desktop_driver.get("data:text/html,<button id='expand'>Expand</button>")
+    button = desktop_driver.find_element(By.ID, "expand")
+
+    assert button.get_property("ariaExpanded") is None
+    assert button.get_attribute("aria-expanded") is None
+    assert button.get_dom_attribute("aria-expanded") is None
+
+
 def test_diagnostic_artifacts_redact_form_values(desktop_driver, tmp_path):
     desktop_driver.get(
         "data:text/html,<input id='input'><textarea id='textarea'></textarea>"
