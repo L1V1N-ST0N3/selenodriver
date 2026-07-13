@@ -1089,6 +1089,18 @@ def test_element_find_element_by_xpath_can_return_self(driver):
     assert parent._xpath_self_marked == set()
 
 
+def test_element_relative_xpath_can_return_ancestor(driver):
+    ancestor = FakeElement("ancestor")
+    child = FakeElement("child")
+    child.xpath_queries["./../.."] = [ancestor]
+    element = WebElement(child, driver._runner, driver)
+
+    found = element.find_element(By.XPATH, "./../..")
+
+    assert found.raw is ancestor
+    assert child._xpath_marked == {}
+
+
 def test_missing_element_raises(driver):
     with pytest.raises(NoSuchElementException):
         driver.find_element(By.CSS_SELECTOR, ".missing")

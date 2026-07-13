@@ -444,6 +444,27 @@ class WebElement:
         return [WebElement(raw, self._runner, self._driver) for raw in raw_elements]
 
     def _find_elements_by_xpath(self, xpath: str) -> list["WebElement"]:
+        parent_steps = self._relative_parent_steps(xpath)
+        is_nodriver_element = type(self._raw).__module__.startswith("nodriver.")
+        if parent_steps is not None and is_nodriver_element:
+            current = self._raw
+            try:
+                for _ in range(parent_steps):
+                    current = current.parent
+                    if current is None:
+                        return []
+            except RuntimeError:
+                update = getattr(current, "update", None)
+                if update is None:
+                    return []
+                self._runner.run(update())
+                current = self._raw
+                for _ in range(parent_steps):
+                    current = current.parent
+                    if current is None:
+                        return []
+            return [WebElement(current, self._runner, self._driver)]
+
         apply = getattr(self._raw, "apply", None)
         query_selector_all = getattr(self._raw, "query_selector_all", None)
         if apply is None or query_selector_all is None:
@@ -477,10 +498,8 @@ class WebElement:
         """
         cleanup_script = f"""
         (el) => {{
-          if (el.getAttribute({marker_name!r}) === {marker_value!r}) {{
-            el.removeAttribute({marker_name!r});
-          }}
-          el.querySelectorAll({selector!r}).forEach((node) => {{
+          const doc = el.ownerDocument || document;
+          doc.querySelectorAll({selector!r}).forEach((node) => {{
             node.removeAttribute({marker_name!r});
           }});
         }}
@@ -495,12 +514,25 @@ class WebElement:
                     )
                 )
             )
-            raw_elements = self._runner.run(query_selector_all(selector)) or []
+            use_document_query = self._driver is not None and is_nodriver_element
+            if use_document_query:
+                raw_elements = self._runner.run(
+                    self._driver.raw_tab.query_selector_all(selector)
+                ) or []
+            else:
+                raw_elements = self._runner.run(query_selector_all(selector)) or []
         finally:
             self._runner.run(apply(cleanup_script, return_by_value=True))
-        if includes_self:
+        if includes_self and not use_document_query:
             raw_elements = [self._raw, *raw_elements]
         return [WebElement(raw, self._runner, self._driver) for raw in raw_elements]
+
+    @staticmethod
+    def _relative_parent_steps(xpath: str) -> int | None:
+        parts = xpath.strip().split("/")
+        if not parts or parts[0] != "." or any(part != ".." for part in parts[1:]):
+            return None
+        return len(parts) - 1
 
     @property
     def shadow_root(self):

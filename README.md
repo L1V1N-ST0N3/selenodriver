@@ -16,6 +16,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [0.1.2 업데이트 내역 / Release Notes](#012-업데이트-내역--release-notes)
 - [0.1.3 업데이트 내역 / Release Notes](#013-업데이트-내역--release-notes)
 - [0.1.4 업데이트 내역 / Release Notes](#014-업데이트-내역--release-notes)
+- [0.1.5 업데이트 내역 / Release Notes](#015-업데이트-내역--release-notes)
 - [빠른 시작 / Quick Start](#빠른-시작--quick-start)
 - [클릭과 입력 방식 / Click and Input Modes](#클릭과-입력-방식--click-and-input-modes)
 - [좌표 클릭 / Offset and Randomized Clicks](#좌표-클릭--랜덤-위치-클릭--offset-and-randomized-clicks)
@@ -49,7 +50,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.1.4
+selenodriver 0.1.5
 ```
 
 The version is also available from Python:
@@ -123,6 +124,11 @@ Version `0.1.1` improves Selenium compatibility and fixes browser-state issues f
 field.send_keys("한글abc123!@😀", mode="jamo", delay=0.03)
 field.send_keys(Keys.ENTER)
 ```
+
+## 0.1.5 업데이트 내역 / Release Notes
+
+- **상대 부모 XPath / Relative parent XPath:** `element.find_element(By.XPATH, "./../..")`처럼 기준 element의 조상을 찾는 XPath가 하위 요소 조회로 잘못 처리되던 문제를 수정했습니다. nodriver의 CDP DOM tree를 직접 따라가므로 SVG `path`에서 상위 버튼을 찾는 흐름도 지원합니다. / Fixes relative parent XPath lookups such as `./../..` by traversing nodriver's CDP DOM tree directly, including SVG path-to-button lookup flows.
+- **회귀 테스트 / Regression coverage:** 단위 테스트와 실제 Chrome 조상 탐색 smoke test를 추가했습니다. / Adds unit and real-Chrome ancestor lookup coverage.
 
 ## 빠른 시작 / Quick Start
 

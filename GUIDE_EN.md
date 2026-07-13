@@ -8,7 +8,7 @@
 python -m pip install selenodriver
 ```
 
-Version 0.1.4 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.1.5 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
 
 ## Quick Start
 
@@ -71,7 +71,11 @@ XPath can be scoped to an existing element:
 container = driver.find_element(By.CSS_SELECTOR, ".container")
 button = container.find_element(By.XPATH, ".//button")
 items = container.find_elements(By.XPATH, ".//li")
+parent = button.find_element(By.XPATH, "./..")
+ancestor = button.find_element(By.XPATH, "./../..")
 ```
+
+Parent-only relative XPath expressions such as `./..` and `./../..` traverse nodriver's CDP DOM tree directly, so they can return ancestors outside the element's descendant subtree.
 
 ## WebElement
 

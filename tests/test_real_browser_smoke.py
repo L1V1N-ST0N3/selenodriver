@@ -92,3 +92,14 @@ def test_mobile_ime_mixed_input(mobile_driver):
     assert mobile_driver.execute_script(
         "return arguments[0].value", field
     ) == "모바일abc123!@😀"
+
+
+def test_element_relative_xpath_returns_ancestor(desktop_driver):
+    desktop_driver.get(
+        "data:text/html,<button id='outer'><span><svg><path id='pen'></path></svg></span></button>"
+    )
+    path = desktop_driver.find_element(By.ID, "pen")
+
+    ancestor = path.find_element(By.XPATH, "./../../..")
+
+    assert ancestor.get_attribute("id") == "outer"
