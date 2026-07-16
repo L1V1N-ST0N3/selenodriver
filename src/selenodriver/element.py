@@ -340,6 +340,32 @@ class WebElement:
         self._runner.run(self._raw.send_keys(text))
 
     def clear(self) -> None:
+        if self._driver is not None:
+            self._driver.execute_script(
+                """
+                const el = arguments[0];
+                if (el.isContentEditable) {
+                    el.textContent = '';
+                } else {
+                    let prototype = Object.getPrototypeOf(el);
+                    let descriptor = null;
+                    while (prototype && !descriptor) {
+                        descriptor = Object.getOwnPropertyDescriptor(prototype, 'value');
+                        prototype = Object.getPrototypeOf(prototype);
+                    }
+                    if (descriptor && descriptor.set) descriptor.set.call(el, '');
+                    else el.value = '';
+                }
+                el.dispatchEvent(new InputEvent('input', {
+                    bubbles: true,
+                    inputType: 'deleteContentBackward',
+                    data: null
+                }));
+                el.dispatchEvent(new Event('change', {bubbles: true}));
+                """,
+                self,
+            )
+            return
         clear_input = getattr(self._raw, "clear_input", None)
         if clear_input is not None:
             self._runner.run(clear_input())

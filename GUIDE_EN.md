@@ -8,7 +8,11 @@
 python -m pip install selenodriver
 ```
 
-Version 0.2.3 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.2.4 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+
+### Version 0.2.4
+
+Version 0.2.4 updates `WebElement.clear()` to use the native value setter and bubbling `input` and `change` events. This keeps React-style controlled inputs and textareas synchronized before replacement text is entered.
 
 ### Version 0.2.3
 

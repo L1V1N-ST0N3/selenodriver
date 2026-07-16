@@ -137,6 +137,20 @@ def test_file_input_set_files_dispatches_native_events(desktop_driver, tmp_path)
     assert desktop_driver.execute_script("return window.events.join(',')") == "input,change"
 
 
+def test_clear_uses_native_setter_and_bubbling_events(desktop_driver):
+    desktop_driver.get(
+        "data:text/html,<textarea id='field'>old review</textarea>"
+        "<script>window.events=[];const f=document.getElementById('field');"
+        "for(const n of ['input','change'])f.addEventListener(n,()=>window.events.push(n));</script>"
+    )
+    field = desktop_driver.find_element(By.ID, "field")
+
+    field.clear()
+
+    assert desktop_driver.execute_script("return arguments[0].value", field) == ""
+    assert desktop_driver.execute_script("return window.events.join(',')") == "input,change"
+
+
 def test_mobile_random_touch_click_returns_diagnostics(mobile_driver):
     mobile_driver.get(
         "data:text/html,<button id='target' style='width:160px;height:60px' "

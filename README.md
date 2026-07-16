@@ -23,6 +23,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [0.1.9 업데이트 내역 / Release Notes](#019-업데이트-내역--release-notes)
 - [0.2.0 업데이트 내역 / Release Notes](#020-업데이트-내역--release-notes)
 - [0.2.1 업데이트 내역 / Release Notes](#021-업데이트-내역--release-notes)
+- [0.2.4 업데이트 내역 / Release Notes](#024-업데이트-내역--release-notes)
 - [0.2.3 업데이트 내역 / Release Notes](#023-업데이트-내역--release-notes)
 - [0.2.2 업데이트 내역 / Release Notes](#022-업데이트-내역--release-notes)
 - [빠른 시작 / Quick Start](#빠른-시작--quick-start)
@@ -58,7 +59,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.2.3
+selenodriver 0.2.4
 ```
 
 The version is also available from Python:
@@ -177,6 +178,10 @@ field.send_keys(Keys.ENTER)
 
 - **누락 attribute 처리 / Missing attribute handling:** `get_attribute()`가 실제로 존재하지 않는 attribute를 조회할 때 nodriver의 `get_js_attributes()` fallback에서 `json.loads(None)` 오류를 내지 않고 Selenium과 같이 `None`을 반환합니다. / `get_attribute()` now returns `None` for a genuinely missing attribute instead of reaching nodriver's fragile `get_js_attributes()` fallback and raising from `json.loads(None)`.
 - **동적 펼치기 버튼 / Dynamic expand controls:** `aria-expanded`가 없는 일회성 `펼쳐보기` 버튼을 정상적으로 판별할 수 있습니다. `aria-expanded="false"`/`"true"` 토글 버튼 동작은 그대로 유지됩니다. / One-shot expand controls without `aria-expanded` can now be detected safely while regular `false`/`true` toggle controls retain their behavior.
+
+## 0.2.4 업데이트 내역 / Release Notes
+
+- **제어 입력 초기화 / Controlled input clearing:** `WebElement.clear()`가 네이티브 value setter와 bubbling `input/change` 이벤트를 사용합니다. React 등 제어 input/textarea에서 기존 값이 복원되거나 새 텍스트 앞에 남는 문제를 방지합니다. / `WebElement.clear()` now uses the native value setter and bubbling `input/change` events, preventing stale values from returning in React-style controlled inputs and textareas.
 
 ## 0.2.3 업데이트 내역 / Release Notes
 

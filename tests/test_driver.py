@@ -1408,8 +1408,11 @@ def test_element_actions(driver):
     element.clear()
 
     assert len([request for request in driver.raw_tab.cdp_requests if request["method"] == "Input.dispatchKeyEvent"]) == 4
-    assert len(driver.raw_tab.sent) == 6
-    assert raw.cleared is True
+    assert any(
+        request["method"] == "Runtime.callFunctionOn"
+        and "deleteContentBackward" in request["params"].get("functionDeclaration", "")
+        for request in driver.raw_tab.cdp_requests
+    )
 
 
 def test_element_click_uses_center_coordinate_events(driver):

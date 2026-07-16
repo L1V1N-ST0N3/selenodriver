@@ -61,7 +61,7 @@ from selenodriver.webdriver.support import expected_conditions as EC
 
 ## 버전과 의존성
 
-현재 패키지 버전은 `0.2.3`입니다.
+현재 패키지 버전은 `0.2.4`입니다.
 
 패키지 요구사항:
 
@@ -74,7 +74,7 @@ nodriver >= 0.39
 
 ```toml
 [project]
-version = "0.2.3"
+version = "0.2.4"
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",
@@ -378,6 +378,8 @@ close_btn = driver.find_element(By.CSS_SELECTOR, "button.swt-close-btn")
 ## WebElement
 
 `find_element()`는 `selenodriver.WebElement`를 반환합니다.
+
+`clear()`는 input/textarea의 네이티브 value setter를 호출하고 bubbling `input`, `change` 이벤트를 전달합니다. React 등 제어 컴포넌트에서도 상태가 동기화됩니다.
 
 ### 파일 업로드
 
