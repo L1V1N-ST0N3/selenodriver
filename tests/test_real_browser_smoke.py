@@ -116,6 +116,27 @@ def test_mobile_official_ime_mode(mobile_driver):
     ) == "한글English123😀"
 
 
+def test_file_input_set_files_dispatches_native_events(desktop_driver, tmp_path):
+    first = tmp_path / "first.jpg"
+    second = tmp_path / "second.jpg"
+    first.write_bytes(b"first-image")
+    second.write_bytes(b"second-image")
+    desktop_driver.get(
+        "data:text/html,<input id='files' type='file' multiple>"
+        "<script>window.events=[];const f=document.getElementById('files');"
+        "for(const n of ['input','change'])f.addEventListener(n,()=>window.events.push(n));</script>"
+    )
+    file_input = desktop_driver.find_element(By.ID, "files")
+
+    resolved = file_input.set_files([first, second])
+
+    assert resolved == [str(first.resolve()), str(second.resolve())]
+    assert desktop_driver.execute_script(
+        "return Array.from(arguments[0].files).map(file => file.name)", file_input
+    ) == ["first.jpg", "second.jpg"]
+    assert desktop_driver.execute_script("return window.events.join(',')") == "input,change"
+
+
 def test_mobile_random_touch_click_returns_diagnostics(mobile_driver):
     mobile_driver.get(
         "data:text/html,<button id='target' style='width:160px;height:60px' "

@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import base64
+import os
 import random
 import uuid
 from collections.abc import Callable, Sequence
+from pathlib import Path
 from typing import Any, Iterable
 
+from nodriver import cdp
+
 from .by import By, locator_to_css
-from .exceptions import ElementClickInterceptedException, ElementNotInteractableException, NoSuchElementException
+from .exceptions import ElementClickInterceptedException, ElementNotInteractableException, InvalidArgumentException, InvalidElementStateException, NoSuchElementException
 from .hangul import split_input_runs
 from .interactions import ClickResult
 from .keys import dispatch_ime_text, dispatch_insert_text, dispatch_key_press, dispatch_text, is_special_key, split_key_sequence
@@ -202,6 +206,47 @@ class WebElement:
         if tab is None:
             raise RuntimeError("Element has no driver or tab for CDP command dispatch")
         return self._runner.run(tab.send(command))
+
+    def set_files(
+        self,
+        *paths: str | os.PathLike[str] | Sequence[str | os.PathLike[str]],
+    ) -> list[str]:
+        """Set local files on an ``<input type=file>`` through Chrome CDP."""
+        if len(paths) == 1 and isinstance(paths[0], Sequence) and not isinstance(
+            paths[0], (str, bytes, os.PathLike)
+        ):
+            candidates = list(paths[0])
+        else:
+            candidates = list(paths)
+        if not candidates:
+            raise InvalidArgumentException("set_files requires at least one file path")
+        if self.tag_name != "input" or str(self.get_attribute("type") or "").lower() != "file":
+            raise InvalidElementStateException("set_files requires an <input type='file'> element")
+        if len(candidates) > 1 and self.get_dom_attribute("multiple") is None:
+            raise InvalidElementStateException("File input does not accept multiple files")
+
+        resolved: list[str] = []
+        for candidate in candidates:
+            try:
+                path = Path(candidate).expanduser().resolve(strict=True)
+            except (OSError, TypeError, ValueError) as error:
+                raise InvalidArgumentException(f"File does not exist: {candidate!s}") from error
+            if not path.is_file():
+                raise InvalidArgumentException(f"Path is not a file: {path}")
+            resolved.append(str(path))
+
+        backend_node_id = getattr(self._raw, "backend_node_id", None)
+        if backend_node_id is None:
+            raise InvalidElementStateException("Element has no backend node id for file input")
+        if not hasattr(backend_node_id, "to_json"):
+            backend_node_id = cdp.dom.BackendNodeId(int(backend_node_id))
+        self.send_cdp(
+            cdp.dom.set_file_input_files(
+                resolved,
+                backend_node_id=backend_node_id,
+            )
+        )
+        return resolved
 
     def send_keys(
         self,

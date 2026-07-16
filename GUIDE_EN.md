@@ -8,7 +8,11 @@
 python -m pip install selenodriver
 ```
 
-Version 0.2.2 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.2.3 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+
+### Version 0.2.3
+
+Version 0.2.3 adds `WebElement.set_files()` for setting local files on `<input type="file">` through CDP `DOM.setFileInputFiles` without opening an OS file picker.
 
 ### Version 0.2.2
 
@@ -409,3 +413,14 @@ The unit suite uses fake nodriver objects. Opt-in real-browser smoke tests requi
 $env:SELENODRIVER_RUN_SMOKE = "1"
 pytest -m smoke
 ```
+### File uploads
+
+```python
+file_input = driver.find_element(By.CSS_SELECTOR, "input#file-upload")
+resolved = file_input.set_files([
+    r"C:\images\one.jpg",
+    r"C:\images\two.jpg",
+])
+```
+
+The method returns validated absolute paths. Paths must exist and refer to regular files. The target must be an `<input type="file">`; multiple paths require its `multiple` attribute. Chrome dispatches native `input` and `change` events, allowing the site's normal upload code to run. `set_files()` confirms file selection, not completion of remote upload or image processing, so wait for the site's preview or completion UI separately.

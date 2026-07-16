@@ -1,6 +1,6 @@
 from .action_chains import ActionChains
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 from .alert import Alert
 from .by import By
 from .driver import Chrome
@@ -8,6 +8,8 @@ from .element import WebElement
 from .exceptions import (
     ElementClickInterceptedException,
     ElementNotInteractableException,
+    InvalidArgumentException,
+    InvalidElementStateException,
     NoAlertPresentException,
     NoSuchElementException,
     NoSuchFrameException,
@@ -41,6 +43,8 @@ __all__ = [
     "MobileProfile",
     "ElementClickInterceptedException",
     "ElementNotInteractableException",
+    "InvalidArgumentException",
+    "InvalidElementStateException",
     "NoAlertPresentException",
     "NoSuchElementException",
     "NoSuchFrameException",

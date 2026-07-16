@@ -23,6 +23,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [0.1.9 업데이트 내역 / Release Notes](#019-업데이트-내역--release-notes)
 - [0.2.0 업데이트 내역 / Release Notes](#020-업데이트-내역--release-notes)
 - [0.2.1 업데이트 내역 / Release Notes](#021-업데이트-내역--release-notes)
+- [0.2.3 업데이트 내역 / Release Notes](#023-업데이트-내역--release-notes)
 - [0.2.2 업데이트 내역 / Release Notes](#022-업데이트-내역--release-notes)
 - [빠른 시작 / Quick Start](#빠른-시작--quick-start)
 - [클릭과 입력 방식 / Click and Input Modes](#클릭과-입력-방식--click-and-input-modes)
@@ -57,7 +58,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.2.2
+selenodriver 0.2.3
 ```
 
 The version is also available from Python:
@@ -176,6 +177,18 @@ field.send_keys(Keys.ENTER)
 
 - **누락 attribute 처리 / Missing attribute handling:** `get_attribute()`가 실제로 존재하지 않는 attribute를 조회할 때 nodriver의 `get_js_attributes()` fallback에서 `json.loads(None)` 오류를 내지 않고 Selenium과 같이 `None`을 반환합니다. / `get_attribute()` now returns `None` for a genuinely missing attribute instead of reaching nodriver's fragile `get_js_attributes()` fallback and raising from `json.loads(None)`.
 - **동적 펼치기 버튼 / Dynamic expand controls:** `aria-expanded`가 없는 일회성 `펼쳐보기` 버튼을 정상적으로 판별할 수 있습니다. `aria-expanded="false"`/`"true"` 토글 버튼 동작은 그대로 유지됩니다. / One-shot expand controls without `aria-expanded` can now be detected safely while regular `false`/`true` toggle controls retain their behavior.
+
+## 0.2.3 업데이트 내역 / Release Notes
+
+- **파일 입력 / File input:** `WebElement.set_files()`가 CDP `DOM.setFileInputFiles`로 로컬 파일을 `<input type="file">`에 직접 설정합니다. OS 파일 선택창이나 `pyautogui`가 필요하지 않습니다. / `WebElement.set_files()` sets local files on `<input type="file">` through CDP `DOM.setFileInputFiles`, without an OS file picker or `pyautogui`.
+- 단일·다중 파일, 절대 경로 정규화, 파일 존재 여부와 input 타입 검증을 지원합니다. 다중 파일에는 input의 `multiple` 속성이 필요합니다. / Supports single and multiple files, absolute-path normalization, path validation, and file-input validation. Multiple files require the input's `multiple` attribute.
+
+```python
+file_input = driver.find_element(By.CSS_SELECTOR, "input[type='file']")
+file_input.set_files([r"C:\images\one.jpg", r"C:\images\two.jpg"])
+```
+
+Chrome은 `FileList` 설정 후 네이티브 `input`과 `change` 이벤트를 발생시킵니다. 사이트의 서버 업로드·변환 완료는 미리보기나 완료 상태를 별도로 기다려야 합니다. / Chrome dispatches native `input` and `change` events after updating the `FileList`. Wait separately for the site's upload/processing UI to finish.
 
 ## 0.2.2 업데이트 내역 / Release Notes
 
@@ -345,7 +358,7 @@ Implemented:
 - Selenium-like import paths under `selenodriver.webdriver.*`
 - common expected conditions
 - locators: CSS selector, XPath, id, name, tag name, class name
-- element actions/properties: `click`, `mouse_click`, `touch_click`, `js_click`, `submit`, `scroll_into_view`, `shadow_root`, `send_keys`, `clear`, `text`, `tag_name`, `get_attribute`, `get_dom_attribute`, `get_property`, `value_of_css_property`, `is_selected`, `size`, `location`, `rect`
+- element actions/properties: `click`, `mouse_click`, `touch_click`, `js_click`, `submit`, `scroll_into_view`, `shadow_root`, `send_keys`, `set_files`, `clear`, `text`, `tag_name`, `get_attribute`, `get_dom_attribute`, `get_property`, `value_of_css_property`, `is_selected`, `size`, `location`, `rect`
 - browser helpers: `get`, `back`, `forward`, `refresh`, extension hooks, init scripts, `auto_wait`, randomized clicks, diagnostics, `implicitly_wait`, `set_script_timeout`, `timeouts`, `session_id`, `capabilities`, PDF printing, window size/position, legacy find aliases, `find_element`, `find_elements`, `execute_script`, `execute_async_script`, `send_cdp`, `execute_cdp_cmd`, scrolling, target refresh, page/window properties, frame/alert switching, cookies, screenshots, `close`, `quit`
 - action chains: `click`, `touch_click`, `double_click`, `double_tap`, `context_click`, `move_to_element`, `move_to_element_with_offset`, `touch_move_to_element_with_offset`, `move_by_offset`, `drag_and_drop`, `drag_and_drop_by_offset`, `touch_drag_and_drop`, `touch_drag_by_offset`, `click_and_hold`, `long_press`, `release`, `send_keys`, `send_keys_to_element`, `key_down`, `key_up`, `pause`
 - input modes: `auto`, `key`, `text`, and official `ime`; `jamo` remains an alias for `ime`. `WebElement.send_keys_js()` is available only when JavaScript value mutation is explicitly required.

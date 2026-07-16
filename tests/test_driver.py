@@ -4,6 +4,7 @@ import base64
 import json
 import random
 import re
+from pathlib import Path
 
 import pytest
 
@@ -14,6 +15,8 @@ from selenodriver import (
     Chrome,
     ClickResult,
     ElementNotInteractableException,
+    InvalidArgumentException,
+    InvalidElementStateException,
     Keys,
     MobileEmulationExtension,
     MobileProfile,
@@ -903,6 +906,43 @@ def test_send_cdp_helpers(driver):
 
     element = WebElement(FakeElement(), driver._runner, driver)
     assert element.send_cdp(FakeCdpCommand()) == "cdp-result"
+
+
+def test_set_files_uses_backend_node_id(driver, tmp_path):
+    first = tmp_path / "first.jpg"
+    second = tmp_path / "second.jpg"
+    first.write_bytes(b"first")
+    second.write_bytes(b"second")
+    raw = FakeElement(tag_name="input", attrs={"type": "file", "multiple": ""})
+    element = WebElement(raw, driver._runner, driver)
+
+    resolved = element.set_files([first, second])
+
+    assert resolved == [str(first.resolve()), str(second.resolve())]
+    request = driver.raw_tab.cdp_requests[-1]
+    assert request["method"] == "DOM.setFileInputFiles"
+    assert request["params"]["files"] == resolved
+    assert request["params"]["backendNodeId"] == raw.backend_node_id
+
+
+def test_set_files_validates_target_and_paths(driver, tmp_path):
+    missing = tmp_path / "missing.jpg"
+    not_file = WebElement(FakeElement(tag_name="div"), driver._runner, driver)
+    single = WebElement(
+        FakeElement(tag_name="input", attrs={"type": "file"}), driver._runner, driver
+    )
+
+    with pytest.raises(InvalidElementStateException):
+        not_file.set_files(missing)
+    with pytest.raises(InvalidArgumentException):
+        single.set_files(missing)
+
+    first = tmp_path / "first.jpg"
+    second = tmp_path / "second.jpg"
+    first.write_bytes(b"first")
+    second.write_bytes(b"second")
+    with pytest.raises(InvalidElementStateException):
+        single.set_files(first, second)
 
 
 def test_execute_cdp_cmd_adds_and_removes_init_script(driver):

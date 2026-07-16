@@ -61,7 +61,7 @@ from selenodriver.webdriver.support import expected_conditions as EC
 
 ## 버전과 의존성
 
-현재 패키지 버전은 `0.2.2`입니다.
+현재 패키지 버전은 `0.2.3`입니다.
 
 패키지 요구사항:
 
@@ -74,7 +74,7 @@ nodriver >= 0.39
 
 ```toml
 [project]
-version = "0.2.2"
+version = "0.2.3"
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",
@@ -378,6 +378,24 @@ close_btn = driver.find_element(By.CSS_SELECTOR, "button.swt-close-btn")
 ## WebElement
 
 `find_element()`는 `selenodriver.WebElement`를 반환합니다.
+
+### 파일 업로드
+
+`set_files()`는 OS 파일 선택창을 열지 않고 CDP `DOM.setFileInputFiles`로 실제 로컬 파일을 file input에 연결합니다.
+
+```python
+file_input = driver.find_element(By.CSS_SELECTOR, "input#file-upload")
+resolved = file_input.set_files([
+    r"C:\images\one.jpg",
+    r"C:\images\two.jpg",
+])
+```
+
+- 반환값은 검증·정규화된 절대 경로 목록입니다.
+- 존재하지 않는 경로와 `<input type="file">`가 아닌 element는 예외가 발생합니다.
+- 여러 파일을 전달하려면 input에 `multiple` 속성이 있어야 합니다.
+- Chrome이 네이티브 `input`, `change` 이벤트를 발생시키므로 사이트의 기존 업로드 코드가 실행됩니다.
+- `set_files()` 완료는 파일 선택 완료를 의미합니다. 서버 업로드와 이미지 처리 완료는 미리보기·삭제 버튼 등 사이트 DOM을 별도로 기다려야 합니다.
 
 ```python
 element = driver.find_element(By.CSS_SELECTOR, "button")
