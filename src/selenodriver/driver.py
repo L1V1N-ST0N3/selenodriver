@@ -1121,6 +1121,12 @@ class Chrome:
             return
 
         add_handler(cdp.page.JavascriptDialogOpening, self._on_dialog_opening)
+        try:
+            self._runner.run(self._tab.send(cdp.page.enable()))
+        except Exception:
+            # Keep navigation usable on legacy or restricted targets. Without
+            # Page.enable Chrome does not emit JavascriptDialogOpening events.
+            pass
 
     def _find_timeout(self) -> float:
         return self._auto_wait_timeout if self._auto_wait else self._implicit_wait

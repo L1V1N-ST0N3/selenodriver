@@ -3,7 +3,14 @@ import os
 
 import pytest
 
-from selenodriver import ActionChains, By, Chrome, MobileEmulationExtension
+from selenodriver import (
+    ActionChains,
+    By,
+    Chrome,
+    MobileEmulationExtension,
+    WebDriverWait,
+)
+from selenodriver.support import expected_conditions as EC
 
 
 pytestmark = pytest.mark.smoke
@@ -51,6 +58,21 @@ def test_execute_async_script_waits_for_completion_callback(desktop_driver):
     )
 
     assert result == {"success": True, "id": "review-1"}
+
+
+def test_real_javascript_dialog_is_detected_and_accepted(desktop_driver):
+    desktop_driver.get("about:blank")
+    desktop_driver.execute_script(
+        "setTimeout(function () { confirm('test-dialog'); }, 100); return true;"
+    )
+
+    alert = WebDriverWait(desktop_driver, 5, poll_frequency=0.1).until(
+        EC.alert_is_present()
+    )
+
+    assert alert.text == "test-dialog"
+    alert.accept()
+    assert EC.alert_is_present()(desktop_driver) is False
 
 
 def test_mobile_navigation_script_and_input(mobile_driver):

@@ -61,7 +61,11 @@ from selenodriver.webdriver.support import expected_conditions as EC
 
 ## 버전과 의존성
 
-현재 패키지 버전은 `0.2.4`입니다.
+현재 패키지 버전은 `0.2.5`입니다.
+
+### 0.2.5 변경 사항
+
+JavaScript dialog handler를 설치할 때 CDP `Page.enable`을 함께 활성화합니다. 따라서 실제 Chrome에서 열린 `alert`, `confirm`, `prompt`를 `driver.switch_to.alert`와 `EC.alert_is_present()`로 감지하고 처리할 수 있습니다. `Page.enable`을 지원하지 않는 구형 또는 제한된 target에서는 초기화를 중단하지 않고 기존 브라우저 제어를 유지합니다.
 
 패키지 요구사항:
 
@@ -74,7 +78,7 @@ nodriver >= 0.39
 
 ```toml
 [project]
-version = "0.2.4"
+version = "0.2.5"
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",

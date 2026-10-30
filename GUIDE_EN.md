@@ -8,7 +8,11 @@
 python -m pip install selenodriver
 ```
 
-Version 0.2.4 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.2.5 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+
+### Version 0.2.5
+
+Version 0.2.5 enables the CDP Page domain when installing JavaScript dialog handlers. Real Chrome `alert`, `confirm`, and `prompt` dialogs are now detected by `driver.switch_to.alert` and `EC.alert_is_present()`. Initialization remains tolerant of legacy or restricted targets that reject `Page.enable`.
 
 ### Version 0.2.4
 

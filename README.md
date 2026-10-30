@@ -23,6 +23,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [0.1.9 업데이트 내역 / Release Notes](#019-업데이트-내역--release-notes)
 - [0.2.0 업데이트 내역 / Release Notes](#020-업데이트-내역--release-notes)
 - [0.2.1 업데이트 내역 / Release Notes](#021-업데이트-내역--release-notes)
+- [0.2.5 업데이트 내역 / Release Notes](#025-업데이트-내역--release-notes)
 - [0.2.4 업데이트 내역 / Release Notes](#024-업데이트-내역--release-notes)
 - [0.2.3 업데이트 내역 / Release Notes](#023-업데이트-내역--release-notes)
 - [0.2.2 업데이트 내역 / Release Notes](#022-업데이트-내역--release-notes)
@@ -59,7 +60,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.2.4
+selenodriver 0.2.5
 ```
 
 The version is also available from Python:
@@ -178,6 +179,12 @@ field.send_keys(Keys.ENTER)
 
 - **누락 attribute 처리 / Missing attribute handling:** `get_attribute()`가 실제로 존재하지 않는 attribute를 조회할 때 nodriver의 `get_js_attributes()` fallback에서 `json.loads(None)` 오류를 내지 않고 Selenium과 같이 `None`을 반환합니다. / `get_attribute()` now returns `None` for a genuinely missing attribute instead of reaching nodriver's fragile `get_js_attributes()` fallback and raising from `json.loads(None)`.
 - **동적 펼치기 버튼 / Dynamic expand controls:** `aria-expanded`가 없는 일회성 `펼쳐보기` 버튼을 정상적으로 판별할 수 있습니다. `aria-expanded="false"`/`"true"` 토글 버튼 동작은 그대로 유지됩니다. / One-shot expand controls without `aria-expanded` can now be detected safely while regular `false`/`true` toggle controls retain their behavior.
+
+## 0.2.5 업데이트 내역 / Release Notes
+
+- **실제 JavaScript dialog 감지 / Real JavaScript dialog detection:** dialog handler 등록 시 CDP `Page.enable`을 활성화하여 실제 Chrome의 `alert`, `confirm`, `prompt`가 `driver.switch_to.alert`와 `EC.alert_is_present()`에 전달되도록 수정했습니다. / Enables CDP `Page.enable` when installing the dialog handler so real Chrome `alert`, `confirm`, and `prompt` dialogs reach `driver.switch_to.alert` and `EC.alert_is_present()`.
+- **구버전 target 호환 / Legacy target compatibility:** `Page.enable`을 지원하지 않거나 제한하는 target에서는 초기화를 중단하지 않고 기존 브라우저 제어를 유지합니다. / Keeps browser initialization usable when a legacy or restricted target rejects `Page.enable`.
+- **실제 Chrome 검증 / Real-Chrome verification:** 예약 실행된 `confirm()`을 감지하고 승인한 뒤 dialog 상태가 해제되는 실제 브라우저 smoke test를 추가했습니다. / Adds a real-browser smoke test that detects and accepts a scheduled `confirm()` and verifies that the dialog state is cleared.
 
 ## 0.2.4 업데이트 내역 / Release Notes
 

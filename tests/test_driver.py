@@ -419,7 +419,11 @@ class FakeExtension:
 def driver():
     tab = FakeTab()
     browser = FakeBrowser(tab)
-    return Chrome(browser=browser, tab=tab, runner=ImmediateRunner())
+    driver = Chrome(browser=browser, tab=tab, runner=ImmediateRunner())
+    tab.sent.clear()
+    tab.cdp_methods.clear()
+    tab.cdp_requests.clear()
+    return driver
 
 
 def test_get_uses_browser_navigation(driver):
@@ -1659,6 +1663,15 @@ def test_alert_is_present_and_accept(driver):
     alert.accept()
     assert driver._current_alert is None
     assert driver.raw_tab.sent
+
+
+def test_dialog_handler_enables_page_events():
+    tab = FakeTab()
+    browser = FakeBrowser(tab)
+
+    Chrome(browser=browser, tab=tab, runner=ImmediateRunner())
+
+    assert "Page.enable" in tab.cdp_methods
 
 
 def test_alert_send_keys_and_dismiss(driver):
