@@ -23,6 +23,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [0.1.9 업데이트 내역 / Release Notes](#019-업데이트-내역--release-notes)
 - [0.2.0 업데이트 내역 / Release Notes](#020-업데이트-내역--release-notes)
 - [0.2.1 업데이트 내역 / Release Notes](#021-업데이트-내역--release-notes)
+- [0.2.7 업데이트 내역 / Release Notes](#027-업데이트-내역--release-notes)
 - [0.2.6 업데이트 내역 / Release Notes](#026-업데이트-내역--release-notes)
 - [0.2.5 업데이트 내역 / Release Notes](#025-업데이트-내역--release-notes)
 - [0.2.4 업데이트 내역 / Release Notes](#024-업데이트-내역--release-notes)
@@ -61,7 +62,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.2.6
+selenodriver 0.2.7
 ```
 
 The version is also available from Python:
@@ -180,6 +181,11 @@ field.send_keys(Keys.ENTER)
 
 - **누락 attribute 처리 / Missing attribute handling:** `get_attribute()`가 실제로 존재하지 않는 attribute를 조회할 때 nodriver의 `get_js_attributes()` fallback에서 `json.loads(None)` 오류를 내지 않고 Selenium과 같이 `None`을 반환합니다. / `get_attribute()` now returns `None` for a genuinely missing attribute instead of reaching nodriver's fragile `get_js_attributes()` fallback and raising from `json.loads(None)`.
 - **동적 펼치기 버튼 / Dynamic expand controls:** `aria-expanded`가 없는 일회성 `펼쳐보기` 버튼을 정상적으로 판별할 수 있습니다. `aria-expanded="false"`/`"true"` 토글 버튼 동작은 그대로 유지됩니다. / One-shot expand controls without `aria-expanded` can now be detected safely while regular `false`/`true` toggle controls retain their behavior.
+
+## 0.2.7 업데이트 내역 / Release Notes
+
+- **dialog 닫힘 이벤트 호환 / Dialog-closed event compatibility:** 최신 Chrome이 `Page.javascriptDialogClosed`에서 `frameId` 또는 `userInput`을 생략해도 이벤트 파서가 중단되지 않습니다. / Keeps the event parser operational when newer Chrome builds omit `frameId` or `userInput` from `Page.javascriptDialogClosed`.
+- **alert 승인 안정성 / Alert acceptance stability:** alert 승인 직후 발생하던 반복 `KeyError: 'frameId'`를 제거하고 닫힘 결과를 정상 보존합니다. / Prevents repeated `KeyError: 'frameId'` exceptions after accepting an alert while preserving its result.
 
 ## 0.2.6 업데이트 내역 / Release Notes
 

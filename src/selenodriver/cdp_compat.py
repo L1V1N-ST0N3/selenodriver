@@ -32,6 +32,24 @@ def install_cdp_event_compatibility() -> None:
         dialog_event.from_json = classmethod(dialog_from_json)
         dialog_event._selenodriver_optional_fields_patch = True
 
+    closed_dialog_event = cdp.page.JavascriptDialogClosed
+    if not getattr(closed_dialog_event, "_selenodriver_optional_fields_patch", False):
+
+        def closed_dialog_from_json(cls: type[Any], payload: dict[str, Any]) -> Any:
+            frame_id = payload.get("frameId")
+            return cls(
+                frame_id=(
+                    cdp.page.FrameId.from_json(frame_id)
+                    if frame_id is not None
+                    else None
+                ),
+                result=bool(payload.get("result", False)),
+                user_input=str(payload.get("userInput", "")),
+            )
+
+        closed_dialog_event.from_json = classmethod(closed_dialog_from_json)
+        closed_dialog_event._selenodriver_optional_fields_patch = True
+
     navigation_event = cdp.page.NavigatedWithinDocument
     if not getattr(navigation_event, "_selenodriver_optional_fields_patch", False):
 

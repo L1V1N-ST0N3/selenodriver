@@ -4,7 +4,7 @@ from .cdp_compat import install_cdp_event_compatibility
 
 install_cdp_event_compatibility()
 
-__version__ = "0.2.6"
+__version__ = "0.2.7"
 from .alert import Alert
 from .by import By
 from .driver import Chrome

@@ -8,7 +8,11 @@
 python -m pip install selenodriver
 ```
 
-Version 0.2.6 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.2.7 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+
+### Version 0.2.7
+
+Version 0.2.7 tolerates newer Chrome `Page.javascriptDialogClosed` events that omit `frameId` or `userInput`. Missing values become `None` and an empty string respectively, while the dialog result remains available.
 
 ### Version 0.2.6
 

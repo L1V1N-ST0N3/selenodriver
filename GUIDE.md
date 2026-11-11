@@ -61,7 +61,11 @@ from selenodriver.webdriver.support import expected_conditions as EC
 
 ## 버전과 의존성
 
-현재 패키지 버전은 `0.2.6`입니다.
+현재 패키지 버전은 `0.2.7`입니다.
+
+### 0.2.7 변경 사항
+
+최신 Chrome이 `Page.javascriptDialogClosed` 이벤트에서 `frameId` 또는 `userInput`을 생략해도 alert 승인 후 이벤트 처리가 중단되지 않습니다. 누락된 `frameId`는 `None`, `userInput`은 빈 문자열로 처리하며 기존 `result` 값은 보존합니다.
 
 ### 0.2.6 변경 사항
 
@@ -82,7 +86,7 @@ nodriver >= 0.39
 
 ```toml
 [project]
-version = "0.2.6"
+version = "0.2.7"
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",
