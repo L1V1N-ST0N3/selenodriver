@@ -8,7 +8,11 @@
 python -m pip install selenodriver
 ```
 
-Version 0.2.5 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+Version 0.2.6 requires Python 3.10 or newer and installs `nodriver>=0.39` as a runtime dependency.
+
+### Version 0.2.6
+
+Version 0.2.6 tolerates newer Chrome `Page.javascriptDialogOpening` events that omit `frameId`, allowing `alert`, `confirm`, and `prompt` handling to continue. It also treats an omitted `Page.navigatedWithinDocument.navigationType` as `unknown`. The compatibility patch is installed automatically when selenodriver is imported; installed nodriver files do not need to be modified.
 
 ### Version 0.2.5
 

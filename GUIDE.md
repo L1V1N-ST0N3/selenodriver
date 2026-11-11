@@ -61,7 +61,11 @@ from selenodriver.webdriver.support import expected_conditions as EC
 
 ## 버전과 의존성
 
-현재 패키지 버전은 `0.2.5`입니다.
+현재 패키지 버전은 `0.2.6`입니다.
+
+### 0.2.6 변경 사항
+
+최신 Chrome이 `Page.javascriptDialogOpening` 이벤트의 `frameId`를 생략해도 JavaScript dialog 감지가 중단되지 않습니다. 또한 `Page.navigatedWithinDocument` 이벤트의 `navigationType` 누락을 `unknown`으로 처리합니다. 이 호환 패치는 selenodriver import 시 자동으로 설치되며 nodriver 파일을 직접 수정할 필요가 없습니다.
 
 ### 0.2.5 변경 사항
 
@@ -78,7 +82,7 @@ nodriver >= 0.39
 
 ```toml
 [project]
-version = "0.2.5"
+version = "0.2.6"
 requires-python = ">=3.10"
 dependencies = [
   "nodriver>=0.39",

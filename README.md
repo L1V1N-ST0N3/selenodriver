@@ -23,6 +23,7 @@ Selenium-style synchronous WebDriver API powered by Python `nodriver`.
 - [0.1.9 업데이트 내역 / Release Notes](#019-업데이트-내역--release-notes)
 - [0.2.0 업데이트 내역 / Release Notes](#020-업데이트-내역--release-notes)
 - [0.2.1 업데이트 내역 / Release Notes](#021-업데이트-내역--release-notes)
+- [0.2.6 업데이트 내역 / Release Notes](#026-업데이트-내역--release-notes)
 - [0.2.5 업데이트 내역 / Release Notes](#025-업데이트-내역--release-notes)
 - [0.2.4 업데이트 내역 / Release Notes](#024-업데이트-내역--release-notes)
 - [0.2.3 업데이트 내역 / Release Notes](#023-업데이트-내역--release-notes)
@@ -60,7 +61,7 @@ English summary:
 현재 패키지 버전 / Current package version:
 
 ```text
-selenodriver 0.2.5
+selenodriver 0.2.6
 ```
 
 The version is also available from Python:
@@ -179,6 +180,12 @@ field.send_keys(Keys.ENTER)
 
 - **누락 attribute 처리 / Missing attribute handling:** `get_attribute()`가 실제로 존재하지 않는 attribute를 조회할 때 nodriver의 `get_js_attributes()` fallback에서 `json.loads(None)` 오류를 내지 않고 Selenium과 같이 `None`을 반환합니다. / `get_attribute()` now returns `None` for a genuinely missing attribute instead of reaching nodriver's fragile `get_js_attributes()` fallback and raising from `json.loads(None)`.
 - **동적 펼치기 버튼 / Dynamic expand controls:** `aria-expanded`가 없는 일회성 `펼쳐보기` 버튼을 정상적으로 판별할 수 있습니다. `aria-expanded="false"`/`"true"` 토글 버튼 동작은 그대로 유지됩니다. / One-shot expand controls without `aria-expanded` can now be detected safely while regular `false`/`true` toggle controls retain their behavior.
+
+## 0.2.6 업데이트 내역 / Release Notes
+
+- **최신 Chrome dialog 호환 / New Chrome dialog compatibility:** `Page.javascriptDialogOpening` 이벤트에서 최신 Chrome이 `frameId`를 생략해도 nodriver 파서가 중단되지 않고 `alert`, `confirm`, `prompt` 처리를 계속합니다. / Keeps JavaScript dialog handling operational when newer Chrome builds omit `frameId` from `Page.javascriptDialogOpening`.
+- **same-document navigation 호환 / Same-document navigation compatibility:** `Page.navigatedWithinDocument`에서 `navigationType`이 누락되면 `unknown`으로 처리하여 이벤트 루프 예외를 방지합니다. / Uses `unknown` when `navigationType` is omitted from `Page.navigatedWithinDocument`.
+- **회귀 검증 / Regression coverage:** 누락 필드와 기존 필드 포함 이벤트를 모두 원시 CDP 파서로 검증합니다. / Covers both omitted and present event fields through the raw CDP event parser.
 
 ## 0.2.5 업데이트 내역 / Release Notes
 

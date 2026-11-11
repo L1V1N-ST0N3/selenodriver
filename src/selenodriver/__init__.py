@@ -1,6 +1,10 @@
 from .action_chains import ActionChains
 
-__version__ = "0.2.5"
+from .cdp_compat import install_cdp_event_compatibility
+
+install_cdp_event_compatibility()
+
+__version__ = "0.2.6"
 from .alert import Alert
 from .by import By
 from .driver import Chrome
